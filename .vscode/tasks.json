@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build ESPHome HeishaMon Example",
+            "type": "shell",
+            "command": "esphome",
+            "args": ["compile", "example.yaml"],
+            "group": "build",
+            "isBackground": false,
+            "problemMatcher": []
+        },
+        {
+            "label": "Upload to ESP Device",
+            "type": "shell", 
+            "command": "esphome",
+            "args": ["upload", "example.yaml"],
+            "group": "build",
+            "isBackground": false,
+            "problemMatcher": []
+        },
+        {
+            "label": "Monitor ESP Logs",
+            "type": "shell",
+            "command": "esphome", 
+            "args": ["logs", "example.yaml"],
+            "group": "test",
+            "isBackground": true,
+            "problemMatcher": []
+        },
+        {
+            "label": "Clean Build",
+            "type": "shell",
+            "command": "esphome",
+            "args": ["clean", "example.yaml"],
+            "group": "build",
+            "isBackground": false,
+            "problemMatcher": []
+        },
+        {
+            "label": "Validate Configuration",
+            "type": "shell",
+            "command": "esphome",
+            "args": ["config", "example.yaml"],
+            "group": "test",
+            "isBackground": false,
+            "problemMatcher": []
+        }
+    ]
+}
