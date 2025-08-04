@@ -24,7 +24,7 @@ void HeishamonSwitch::write_state(bool state) {
     return;
   }
   
-  // Créer la commande appropriée
+  // Create appropriate command
   std::vector<uint8_t> command = this->create_command(state);
   
   if (!command.empty()) {
@@ -40,7 +40,7 @@ void HeishamonSwitch::write_state(bool state) {
 }
 
 std::vector<uint8_t> HeishamonSwitch::create_command(bool state) {
-  // Commande Panasonic de base (issue de commands.cpp)
+  // Basic Panasonic command (from commands.cpp)
   std::vector<uint8_t> cmd = {
     0xf1, 0x6c, 0x01, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -54,7 +54,7 @@ std::vector<uint8_t> HeishamonSwitch::create_command(bool state) {
     0x00, 0x00
   };
   
-  // Configurer selon la commande (portées depuis commands.cpp)
+  // Configure according to command (ported from commands.cpp)
   if (this->command_ == "force_dhw") {
     cmd[4] = state ? 0x80 : 0x40;  // Force DHW mode
   } 
@@ -68,7 +68,7 @@ std::vector<uint8_t> HeishamonSwitch::create_command(bool state) {
     cmd[4] = state ? 0x02 : 0x01;  // Heat pump state
   }
   else {
-    // Commande inconnue
+    // Unknown command
     return {};
   }
   

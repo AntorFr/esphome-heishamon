@@ -3,11 +3,11 @@
 namespace esphome {
 namespace heishamon {
 
-// Types de requêtes HeishaMon
+// HeishaMon query types
 enum class QueryType : uint8_t {
   INITIAL = 0x31,
   PANASONIC_NORMAL = 0x71,
-  PANASONIC_EXTRA = 0x71,  // avec byte[3] = 0x21
+  PANASONIC_EXTRA = 0x71,  // with byte[3] = 0x21
   OPTIONAL_PCB = 0xF1
 };
 
@@ -31,7 +31,7 @@ enum class OperationMode : uint8_t {
   AUTO_COOL_DHW = 42
 };
 
-// Index des bytes importants dans les données (issues de decode.h)
+// Index of important bytes in data (from decode.h)
 namespace DataIndex {
   constexpr uint8_t HEATPUMP_STATE = 4;
   constexpr uint8_t OPERATION_MODE = 6;
@@ -56,14 +56,14 @@ namespace Defaults {
   constexpr float UNKNOWN_VALUE = -1.0f;
 }
 
-// Validation des données
+// Data validation
 namespace Validation {
   constexpr float MIN_TEMPERATURE = -50.0f;
   constexpr float MAX_TEMPERATURE = 100.0f;
   constexpr float MIN_POWER = 0.0f;
   constexpr float MAX_POWER = 20000.0f;  // 20kW max réaliste
   constexpr float MIN_FREQUENCY = 0.0f;
-  constexpr float MAX_FREQUENCY = 200.0f;  // 200Hz max pour compresseur
+  constexpr float MAX_FREQUENCY = 200.0f;  // 200Hz max for compressor
 }
 
 }  // namespace heishamon

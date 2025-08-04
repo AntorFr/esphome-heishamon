@@ -22,7 +22,7 @@ static const char *const TAG = "heishamon";
 #define SERIALTIMEOUT 2000
 #define MAXCOMMANDSINBUFFER 10
 
-// Structure pour les topics et leurs données
+// Structure for topics and their data
 struct HeishaTopic {
   std::string name;
   uint8_t byte_index;
@@ -78,13 +78,13 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   uint32_t last_optional_pcb_time_{0};
   uint32_t send_command_read_time_{0};
   
-  // Buffers de données
+  // Data buffers
   std::vector<uint8_t> data_buffer_;
   std::vector<uint8_t> act_data_;
   std::vector<uint8_t> act_data_extra_;
   std::vector<uint8_t> act_opt_data_;
   
-  // Buffer de commandes
+  // Command buffer
   std::vector<CommandBuffer> command_buffer_;
   size_t cmd_start_{0};
   size_t cmd_end_{0};
@@ -112,7 +112,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   void push_command_buffer(const std::vector<uint8_t> &command);
   void pop_command_buffer();
   
-  // Fonctions de décodage (portées depuis HeishaMon)
+  // Decoding functions (ported from HeishaMon)
   float unknown(uint8_t input);
   float get_bit_1_and_2(uint8_t input);
   float get_bit_3_and_4(uint8_t input);
@@ -131,7 +131,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   std::vector<HeishaTopic> topics_;
   std::vector<HeishaTopic> optional_topics_;
   
-  // Requêtes prédéfinies (portées depuis HeishaMon)
+  // Predefined queries (ported from HeishaMon)
   std::vector<uint8_t> initial_query_;
   std::vector<uint8_t> panasonic_query_;
   std::vector<uint8_t> optional_pcb_query_;

@@ -41,12 +41,19 @@ esphome-heishamon/
 │       ├── switch.py             # Switch configuration
 │       ├── switch.h              # Switch header
 │       └── switch.cpp            # Switch implementation
+├── docs/
+│   ├── WIRING.md                # Hardware wiring diagrams
+│   └── DEBUGGING.md             # Troubleshooting guide
 ├── example-esp8266.yaml         # ESP8266 configuration example
 ├── example-esp32.yaml           # ESP32 configuration example
-└── README.md                    # Documentation
+└── README.md                    # Main documentation
 ```
 
 ## Hardware Setup
+
+For detailed wiring diagrams and hardware setup instructions, see **[`docs/WIRING.md`](docs/WIRING.md)**.
+
+### Basic Connection
 
 ### ESP8266 vs ESP32 Comparison
 
@@ -202,7 +209,7 @@ If you have a CZ-TAW1 controller installed:
 
 ## Troubleshooting
 
-For detailed troubleshooting information, see [DEBUGGING.md](DEBUGGING.md).
+For detailed troubleshooting information, see **[`docs/DEBUGGING.md`](docs/DEBUGGING.md)**.
 
 ### Common Issues
 

@@ -20,7 +20,7 @@ DEPENDENCIES = ["heishamon"]
 
 HeishamonSensor = heishamon_ns.class_("HeishamonSensor", sensor.Sensor, cg.Component)
 
-# Configuration des topics disponibles
+# Available topics configuration
 HEISHA_TOPICS = {
     "heatpump_state": {"unit": "", "device_class": None, "state_class": STATE_CLASS_MEASUREMENT},
     "main_inlet_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
@@ -32,7 +32,7 @@ HEISHA_TOPICS = {
     "compressor_freq": {"unit": UNIT_HERTZ, "device_class": DEVICE_CLASS_FREQUENCY, "state_class": STATE_CLASS_MEASUREMENT},
     "heat_power_production": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER, "state_class": STATE_CLASS_MEASUREMENT},
     "heat_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER, "state_class": STATE_CLASS_MEASUREMENT},
-        "pump_flow": (None, UNIT_CUBIC_METER_PER_HOUR, DEVICE_CLASS_VOLUME_FLOW_RATE),
+    "pump_flow": (None, UNIT_CUBIC_METER_PER_HOUR, DEVICE_CLASS_VOLUME_FLOW_RATE),
     "operation_mode": {"unit": "", "device_class": None, "state_class": STATE_CLASS_MEASUREMENT},
 }
 
@@ -53,7 +53,7 @@ async def to_code(config):
     cg.add(var.set_parent(parent))
     cg.add(var.set_topic(config["topic"]))
     
-    # Configuration automatique des unités et classes
+    # Automatic configuration of units and classes
     topic_config = HEISHA_TOPICS[config["topic"]]
     if topic_config["unit"] and "unit_of_measurement" not in config:
         cg.add(var.set_unit_of_measurement(topic_config["unit"]))

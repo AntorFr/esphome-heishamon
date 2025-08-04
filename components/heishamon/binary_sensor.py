@@ -8,7 +8,7 @@ DEPENDENCIES = ["heishamon"]
 
 HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", binary_sensor.BinarySensor, cg.Component)
 
-# Topics pour binary sensors
+# Topics for binary sensors
 HEISHA_BINARY_TOPICS = {
     "heatpump_state": "Heat pump state",
     "defrosting_state": "Defrosting state", 

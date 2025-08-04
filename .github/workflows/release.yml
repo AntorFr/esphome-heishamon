@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'components/**'
+      - 'example-*.yaml'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+        
+    - name: Install ESPHome
+      run: |
+        python -m pip install --upgrade pip
+        pip install esphome
+        
+    - name: Generate version number
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          # Auto-generate version based on date and commit
+          VERSION="v$(date +'%Y.%m.%d')-$(git rev-parse --short HEAD)"
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+        
+    - name: Validate configurations before release
+      run: |
+        cat > secrets.yaml << EOF
+        wifi_ssid: "test_network"
+        wifi_password: "test_password"
+        EOF
+        
+        echo "🧪 Validating configurations for release..."
+        esphome config example-esp8266.yaml
+        esphome config example-esp32.yaml
+        echo "✅ All configurations valid"
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "## 🚀 ESPHome HeishaMon Release ${{ steps.version.outputs.version }}" > RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "### 📋 What's Included" >> RELEASE_NOTES.md
+        echo "- Complete ESPHome custom component for Panasonic heat pumps" >> RELEASE_NOTES.md
+        echo "- ESP8266 and ESP32 platform support" >> RELEASE_NOTES.md
+        echo "- Temperature, power, and flow monitoring sensors" >> RELEASE_NOTES.md
+        echo "- Heat pump control switches (DHW, defrost, holiday mode)" >> RELEASE_NOTES.md
+        echo "- Compatible with ESPHome $(esphome version | grep -o 'Version: [0-9.]*' | cut -d' ' -f2)" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "### 🔧 Hardware Requirements" >> RELEASE_NOTES.md
+        echo "- ESP8266 (Wemos D1 Mini) or ESP32 development board" >> RELEASE_NOTES.md
+        echo "- 3.3V ↔ 5V level shifter (bidirectional)" >> RELEASE_NOTES.md
+        echo "- Panasonic heat pump with CN-CNT connector" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "### 📖 Documentation" >> RELEASE_NOTES.md
+        echo "- Complete setup guide in README.md" >> RELEASE_NOTES.md
+        echo "- Debugging guide in DEBUGGING.md" >> RELEASE_NOTES.md
+        echo "- Example configurations for both platforms" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "### 🔍 Recent Changes" >> RELEASE_NOTES.md
+        git log --oneline --since="7 days ago" --pretty=format:"- %s" >> RELEASE_NOTES.md || echo "- Initial release" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "" >> RELEASE_NOTES.md
+        echo "### 🙏 Credits" >> RELEASE_NOTES.md
+        echo "Based on the original [HeishaMon](https://github.com/Egyras/HeishaMon) project by Egyras." >> RELEASE_NOTES.md
+        
+    - name: Create Release Archive
+      run: |
+        # Create a clean release archive
+        mkdir -p release-files
+        
+        # Copy essential files
+        cp -r components release-files/
+        cp example-esp8266.yaml release-files/
+        cp example-esp32.yaml release-files/
+        cp secrets.yaml.example release-files/
+        cp README.md release-files/
+        cp DEBUGGING.md release-files/
+        cp test-compilation.sh release-files/
+        
+        # Create archive
+        cd release-files
+        tar -czf ../esphome-heishamon-${{ steps.version.outputs.version }}.tar.gz .
+        zip -r ../esphome-heishamon-${{ steps.version.outputs.version }}.zip .
+        cd ..
+        
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: ESPHome HeishaMon ${{ steps.version.outputs.version }}
+        body_path: RELEASE_NOTES.md
+        files: |
+          esphome-heishamon-${{ steps.version.outputs.version }}.tar.gz
+          esphome-heishamon-${{ steps.version.outputs.version }}.zip
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update dev branch
+      run: |
+        echo "🔄 Release ${{ steps.version.outputs.version }} created from main"
+        echo "Consider updating dev branch if needed"

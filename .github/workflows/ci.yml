@@ -1,0 +1,250 @@
+name: ESPHome HeishaMon CI/CD
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'components/**'
+      - 'example-*.yaml'
+      - '*.md'
+      - '.github/workflows/**'
+  push:
+    branches: [ dev ]
+    paths:
+      - 'components/**'
+      - 'example-*.yaml'
+      - '*.md'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  lint-and-validate:
+    name: Lint and Validate Configurations
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.11]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install ESPHome
+      run: |
+        python -m pip install --upgrade pip
+        pip install esphome
+        
+    - name: Create test secrets
+      run: |
+        cat > secrets.yaml << EOF
+        wifi_ssid: "test_network"
+        wifi_password: "test_password"
+        EOF
+        
+    - name: Validate ESP8266 configuration
+      run: |
+        esphome config example-esp8266.yaml
+        
+    - name: Validate ESP32 configuration
+      run: |
+        esphome config example-esp32.yaml
+        
+    - name: Python code quality check
+      run: |
+        pip install flake8 black
+        # Check Python files in components
+        find components -name "*.py" -exec flake8 --max-line-length=120 --ignore=E203,W503 {} \;
+        find components -name "*.py" -exec black --check --diff {} \;
+
+  compile-test:
+    name: Compile Test
+    runs-on: ubuntu-latest
+    needs: lint-and-validate
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[compile]')
+    strategy:
+      matrix:
+        platform: [esp8266, esp32]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-compile-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-compile-
+          ${{ runner.os }}-pip-
+          
+    - name: Install ESPHome
+      run: |
+        python -m pip install --upgrade pip
+        pip install esphome
+        
+    - name: Create test secrets
+      run: |
+        cat > secrets.yaml << EOF
+        wifi_ssid: "test_network"
+        wifi_password: "test_password"
+        EOF
+        
+    - name: Compile ${{ matrix.platform }} firmware
+      run: |
+        timeout 15m esphome compile example-${{ matrix.platform }}.yaml
+        
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v3
+      with:
+        name: firmware-${{ matrix.platform }}-${{ github.sha }}
+        path: |
+          build/*/firmware.bin
+          build/*/firmware.elf
+        retention-days: 7
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check documentation completeness
+      run: |
+        # Check that all required files exist
+        required_files=("README.md" "DEBUGGING.md" "example-esp8266.yaml" "example-esp32.yaml")
+        for file in "${required_files[@]}"; do
+          if [[ ! -f "$file" ]]; then
+            echo "❌ Missing required file: $file"
+            exit 1
+          fi
+        done
+        echo "✅ All required documentation files present"
+        
+    - name: Check example configurations have required sections
+      run: |
+        # Check ESP8266 example
+        required_sections=("esphome:" "esp8266:" "uart:" "heishamon:" "sensor:" "binary_sensor:" "switch:")
+        for section in "${required_sections[@]}"; do
+          if ! grep -q "^$section" example-esp8266.yaml; then
+            echo "❌ Missing section '$section' in example-esp8266.yaml"
+            exit 1
+          fi
+        done
+        
+        # Check ESP32 example  
+        required_sections=("esphome:" "esp32:" "uart:" "heishamon:" "sensor:" "binary_sensor:" "switch:")
+        for section in "${required_sections[@]}"; do
+          if ! grep -q "^$section" example-esp32.yaml; then
+            echo "❌ Missing section '$section' in example-esp32.yaml"
+            exit 1
+          fi
+        done
+        echo "✅ All required sections present in examples"
+        
+    - name: Markdown link checker
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'no'
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Run security scan
+      run: |
+        # Check for hardcoded secrets (basic check)
+        if grep -r -i "password.*=" --include="*.yaml" --include="*.py" --include="*.cpp" --include="*.h" .; then
+          echo "⚠️  Potential hardcoded credentials found. Please use secrets.yaml"
+          # Don't fail the build, just warn
+        fi
+        
+        # Check for TODO/FIXME comments that might indicate incomplete code
+        if grep -r -n "TODO\|FIXME\|XXX" --include="*.py" --include="*.cpp" --include="*.h" components/; then
+          echo "⚠️  Found TODO/FIXME comments in code"
+          # Don't fail the build, just warn  
+        fi
+        
+        echo "✅ Basic security scan completed"
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, documentation-check]
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+        
+    - name: Install ESPHome
+      run: |
+        python -m pip install --upgrade pip
+        pip install esphome
+        
+    - name: Run integration test script
+      run: |
+        chmod +x test-compilation.sh
+        ./test-compilation.sh
+        
+    - name: Test with different ESPHome versions
+      run: |
+        # Test with older ESPHome version for compatibility
+        pip install esphome==2023.12.9
+        echo "Testing with ESPHome 2023.12.9..."
+        
+        cat > secrets.yaml << EOF
+        wifi_ssid: "test_network"
+        wifi_password: "test_password"
+        EOF
+        
+        # Only validate, don't compile with older version
+        esphome config example-esp8266.yaml || echo "⚠️  Not compatible with ESPHome 2023.12.9"
+        esphome config example-esp32.yaml || echo "⚠️  Not compatible with ESPHome 2023.12.9"
+
+  merge-ready:
+    name: Merge Ready Check
+    runs-on: ubuntu-latest
+    needs: [lint-and-validate, documentation-check, security-scan, integration-test]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: All checks passed
+      run: |
+        echo "🎉 All CI checks passed!"
+        echo "✅ Linting and validation: PASSED"
+        echo "✅ Documentation check: PASSED" 
+        echo "✅ Security scan: PASSED"
+        echo "✅ Integration tests: PASSED"
+        echo ""
+        echo "🚀 Ready to merge to main branch!"

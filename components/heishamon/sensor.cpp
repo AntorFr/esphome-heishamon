@@ -9,7 +9,7 @@ static const char *const TAG = "heishamon.sensor";
 void HeishamonSensor::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Heishamon Sensor '%s'...", this->topic_.c_str());
   
-  // Enregistrer le callback avec le parent
+  // Register callback with parent
   if (this->parent_ != nullptr) {
     this->parent_->register_sensor(this->topic_, [this](float value) {
       this->on_data_received(value);
@@ -26,7 +26,7 @@ void HeishamonSensor::dump_config() {
 }
 
 void HeishamonSensor::on_data_received(float value) {
-  if (!isnan(value) && value != -1.0f) {  // -1 est utilisé pour "unknown" dans HeishaMon
+  if (!isnan(value) && value != -1.0f) {  // -1 is used for "unknown" in HeishaMon
     this->publish_state(value);
   }
 }

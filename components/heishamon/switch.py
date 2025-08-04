@@ -8,7 +8,7 @@ DEPENDENCIES = ["heishamon"]
 
 HeishamonSwitch = heishamon_ns.class_("HeishamonSwitch", switch.Switch, cg.Component)
 
-# Commandes disponibles avec leurs paramètres
+# Available commands with their parameters
 HEISHA_COMMANDS = {
     "force_dhw": {"name": "Force DHW", "command_type": "boolean"},
     "force_defrost": {"name": "Force defrost", "command_type": "boolean"},

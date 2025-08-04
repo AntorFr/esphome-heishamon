@@ -10,32 +10,32 @@ static const char *const TAG = "heishamon";
 void HeishamonComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Heishamon...");
   
-  // Initialiser les buffers
+  // Initialize buffers
   this->data_buffer_.reserve(MAXDATASIZE);
   this->act_data_.resize(DATASIZE, 0);
   this->act_data_extra_.resize(DATASIZE, 0);
   this->act_opt_data_.resize(OPTDATASIZE, 0);
   
-  // Initialiser les requêtes prédéfinies (portées depuis HeishaMon)
+  // Initialize predefined queries (ported from HeishaMon)
   this->initial_query_ = {0x31, 0x05, 0x10, 0x01, 0x00, 0x00, 0x00};
   
-  // Requête Panasonic (version simplifiée pour économiser la mémoire)
+  // Panasonic query (simplified version to save memory)
   this->panasonic_query_.resize(PANASONICQUERYSIZE, 0x00);
   this->panasonic_query_[0] = 0x71;
   this->panasonic_query_[1] = 0x6c;
   this->panasonic_query_[2] = 0x01;
   this->panasonic_query_[3] = 0x10;
   
-  // Requête PCB optionnelle
+  // Optional PCB query
   this->optional_pcb_query_ = {
     0xF1, 0x11, 0x01, 0x50, 0x00, 0x00, 0x40, 0xFF, 0xFF, 0xE5, 
     0xFF, 0xFF, 0x00, 0xFF, 0xEB, 0xFF, 0xFF, 0x00, 0x00
   };
   
-  // Initialiser les topics
+  // Initialize topics
   this->init_topics();
   
-  // Initialiser le buffer de commandes
+  // Initialize command buffer
   this->command_buffer_.resize(MAXCOMMANDSINBUFFER);
   
   ESP_LOGCONFIG(TAG, "Heishamon setup completed");
@@ -44,31 +44,31 @@ void HeishamonComponent::setup() {
 void HeishamonComponent::loop() {
   uint32_t now = millis();
   
-  // Vérifier les timeouts
+  // Check timeouts
   if (this->sending_ && (now - this->send_command_read_time_) > SERIALTIMEOUT) {
     ESP_LOGW(TAG, "Command timeout, resetting send state");
     this->sending_ = false;
     this->timeout_reads_++;
   }
   
-  // Lire les données série
+  // Read serial data
   if (this->available() > 0) {
     this->read_serial();
   }
   
-  // Traiter les commandes en buffer
+  // Process buffered commands
   if (!this->sending_ && this->cmd_count_ > 0) {
     this->pop_command_buffer();
   }
   
-  // Envoyer les requêtes périodiques
+  // Send periodic queries
   if ((now - this->last_run_time_) > this->update_interval_) {
     this->last_run_time_ = now;
     
     if (!this->listen_only_) {
       this->send_panasonic_query();
       
-      // Envoyer requête PCB optionnelle si activée
+      // Send optional PCB query if enabled
       if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
         this->last_optional_pcb_time_ = now;
         this->send_optional_pcb_query();
@@ -90,11 +90,11 @@ bool HeishamonComponent::read_serial() {
     uint8_t byte;
     this->read_byte(&byte);
     
-    // Premier byte = début de nouveau paquet
+    // First byte = start of new packet
     if (this->data_buffer_.empty()) {
       this->total_reads_++;
       
-      // Vérifier header valide
+      // Check valid header
       if (byte != 0x71 && byte != 0x31 && byte != 0xF1) {
         ESP_LOGW(TAG, "Invalid header: 0x%02X", byte);
         this->bad_header_reads_++;
@@ -104,12 +104,12 @@ bool HeishamonComponent::read_serial() {
     
     this->data_buffer_.push_back(byte);
     
-    // Vérifier si on a reçu assez de données pour déterminer la longueur
+    // Check if we received enough data to determine length
     if (this->data_buffer_.size() >= 2) {
-      uint8_t expected_length = this->data_buffer_[1] + 3; // longueur + header + checksum
+      uint8_t expected_length = this->data_buffer_[1] + 3; // length + header + checksum
       
       if (this->data_buffer_.size() == expected_length) {
-        // Paquet complet reçu
+        // Complete packet received
         this->sending_ = false;
         
         if (!this->is_valid_checksum(this->data_buffer_)) {
@@ -122,13 +122,13 @@ bool HeishamonComponent::read_serial() {
         ESP_LOGD(TAG, "Received valid packet, size: %d", this->data_buffer_.size());
         this->good_reads_++;
         
-        // Décoder selon le type de données
+        // Decode according to data type
         if (this->data_buffer_.size() == DATASIZE) {
           if (this->data_buffer_[3] == 0x10) {
             this->decode_heatpump_data(this->data_buffer_);
           } else if (this->data_buffer_[3] == 0x21) {
             this->extra_data_available_ = true;
-            // Copier vers buffer extra data
+            // Copy to extra data buffer
             std::copy(this->data_buffer_.begin(), this->data_buffer_.end(), this->act_data_extra_.begin());
           }
         } else if (this->data_buffer_.size() == OPTDATASIZE) {
@@ -157,12 +157,12 @@ void HeishamonComponent::send_panasonic_query() {
   
   ESP_LOGD(TAG, "Sending panasonic query");
   
-  // Calculer et ajouter checksum
+  // Calculate and add checksum
   std::vector<uint8_t> query_with_checksum = this->panasonic_query_;
   uint8_t checksum = this->calc_checksum(this->panasonic_query_);
   query_with_checksum.push_back(checksum);
   
-  // Envoyer
+  // Send
   this->write_array(query_with_checksum);
   this->sending_ = true;
   this->send_command_read_time_ = millis();
@@ -186,15 +186,15 @@ void HeishamonComponent::send_optional_pcb_query() {
 }
 
 void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) {
-  // Copier vers buffer actuel
+  // Copy to current buffer
   std::copy(data.begin(), data.end(), this->act_data_.begin());
   
-  // Décoder tous les topics configurés
+  // Decode all configured topics
   for (const auto &topic : this->topics_) {
     if (topic.byte_index < data.size()) {
       float value = topic.decode_func(data[topic.byte_index]);
       
-      // Appeler callback si enregistré
+      // Call callback if registered
       auto it = this->sensor_callbacks_.find(topic.name);
       if (it != this->sensor_callbacks_.end()) {
         it->second(value);
@@ -255,7 +255,7 @@ void HeishamonComponent::pop_command_buffer() {
   const CommandBuffer &cmd = this->command_buffer_[this->cmd_start_];
   std::vector<uint8_t> command(cmd.data, cmd.data + cmd.length);
   
-  // Envoyer commande
+  // Send command
   uint8_t checksum = this->calc_checksum(command);
   command.push_back(checksum);
   
@@ -293,7 +293,7 @@ bool HeishamonComponent::send_command(const std::vector<uint8_t> &command) {
   return true;
 }
 
-// Fonctions de décodage portées depuis HeishaMon
+// Decoding functions ported from HeishaMon
 float HeishamonComponent::unknown(uint8_t input) { return -1; }
 
 float HeishamonComponent::get_bit_1_and_2(uint8_t input) {
@@ -350,10 +350,10 @@ float HeishamonComponent::get_pump_flow(const std::vector<uint8_t> &data) {
 }
 
 void HeishamonComponent::init_topics() {
-  // Initialiser les topics les plus importants (sélection des plus critiques pour économiser la mémoire)
+  // Initialize the most important topics (selection of critical ones to save memory)
   this->topics_.clear();
   
-  // Topics principaux de la pompe à chaleur
+  // Main heat pump topics
   this->topics_.push_back({"heatpump_state", 4, 
     [this](uint8_t input) { return this->get_bit_7_and_8(input); }, "", "Heat pump state"});
   
@@ -389,7 +389,7 @@ void HeishamonComponent::init_topics() {
   
   this->topics_.push_back({"operation_mode", 6, 
     [this](uint8_t input) { 
-      // Décodage simplifié du mode opératoire
+      // Simplified operation mode decoding
       uint8_t mode = input & 0b111111;
       switch (mode) {
         case 18: return 0.0f; // Heat
@@ -405,7 +405,7 @@ void HeishamonComponent::init_topics() {
       }
     }, "", "Operation mode"});
   
-  // Topics optionnels pour PCB
+  // Optional topics for PCB
   if (this->optional_pcb_) {
     this->optional_topics_.push_back({"z1_water_pump", 4, 
       [this](uint8_t input) { return static_cast<float>(input >> 7); }, "", "Zone 1 water pump"});

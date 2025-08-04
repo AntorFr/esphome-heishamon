@@ -1,0 +1,56 @@
+name: Branch Protection
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  branch-protection:
+    name: Branch Protection Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Check if push is from allowed source
+      run: |
+        echo "🔒 Main branch protection active"
+        echo "Direct pushes to main are discouraged."
+        echo "Please use pull requests from dev branch."
+        echo "This workflow will continue but consider using proper PR workflow."
+        
+    - name: Notify about branch protection
+      run: |
+        echo "::notice title=Branch Protection::Direct push to main detected. Consider using PR from dev branch for better code review."
+
+  pr-requirements:
+    name: PR Requirements Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    
+    steps:
+    - name: Check PR source branch
+      run: |
+        echo "🔍 Checking pull request requirements..."
+        echo "Source branch: ${{ github.head_ref }}"
+        echo "Target branch: ${{ github.base_ref }}"
+        
+        if [[ "${{ github.head_ref }}" == "dev" ]]; then
+          echo "✅ PR from dev branch - APPROVED"
+        else
+          echo "⚠️  PR not from dev branch"
+          echo "Recommended: Create PRs from dev branch to main"
+        fi
+        
+    - name: Check PR title format
+      run: |
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        echo "PR Title: $PR_TITLE"
+        
+        # Check for common prefixes
+        if [[ "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|test|chore): ]]; then
+          echo "✅ PR title follows conventional format"
+        else
+          echo "💡 Consider using conventional commit format: feat|fix|docs|style|refactor|test|chore: description"
+        fi

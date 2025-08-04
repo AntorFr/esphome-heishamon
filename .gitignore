@@ -41,3 +41,9 @@ esphome.log
 *.tmp
 *.temp
 .esphome/
+
+# Temporary documentation files
+*_SUMMARY.md
+DEV_STATUS.md
+TRANSLATION_*.md
+*_TEMP.md
