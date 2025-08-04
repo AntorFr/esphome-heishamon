@@ -10,6 +10,9 @@
 namespace esphome {
 namespace heishamon {
 
+// Forward declarations
+class HeishaMonClimate;
+
 static const char *const TAG = "heishamon";
 
 // Constants from HeishaMon
@@ -66,6 +69,39 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   void send_command(const std::string &command);
   void create_command(const std::string &command, uint8_t value);
 
+  // Climate control functions
+  void set_heat_mode_enabled(bool enabled);
+  void set_cool_mode_enabled(bool enabled);
+  void set_zone1_heat_enabled(bool enabled);
+  void set_zone1_cool_enabled(bool enabled);
+  void set_zone2_heat_enabled(bool enabled);
+  void set_zone2_cool_enabled(bool enabled);
+  
+  // Temperature setters
+  void set_zone1_heat_target_temperature(float temperature);
+  void set_zone1_cool_target_temperature(float temperature);
+  void set_zone2_heat_target_temperature(float temperature);
+  void set_zone2_cool_target_temperature(float temperature);
+  
+  // Temperature getters
+  float get_zone1_current_temperature() const;
+  float get_zone2_current_temperature() const;
+  float get_zone1_heat_target_temperature() const;
+  float get_zone1_cool_target_temperature() const;
+  float get_zone2_heat_target_temperature() const;
+  float get_zone2_cool_target_temperature() const;
+  
+  // State getters
+  bool get_heat_mode_enabled() const;
+  bool get_cool_mode_enabled() const;
+  bool get_zone1_heat_enabled() const;
+  bool get_zone1_cool_enabled() const;
+  bool get_zone2_heat_enabled() const;
+  bool get_zone2_cool_enabled() const;
+  
+  // Climate component registration
+  void register_climate_component(class HeishaMonClimate *climate);
+
  protected:
   uint32_t update_interval_{30000};
   bool listen_only_{false};
@@ -92,6 +128,25 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   
   // Callbacks des sensors
   std::map<std::string, std::function<void(float)>> sensor_callbacks_;
+  
+  // Climate components
+  std::vector<class HeishaMonClimate *> climate_components_;
+  
+  // Climate state tracking
+  bool heat_mode_enabled_{false};
+  bool cool_mode_enabled_{false};
+  bool zone1_heat_enabled_{false};
+  bool zone1_cool_enabled_{false};
+  bool zone2_heat_enabled_{false};
+  bool zone2_cool_enabled_{false};
+  
+  // Current temperatures
+  float zone1_current_temp_{NAN};
+  float zone2_current_temp_{NAN};
+  float zone1_heat_target_temp_{20.0f};
+  float zone1_cool_target_temp_{20.0f};
+  float zone2_heat_target_temp_{20.0f};
+  float zone2_cool_target_temp_{20.0f};
   
   // Statistiques
   uint32_t total_reads_{0};

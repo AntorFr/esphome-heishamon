@@ -105,6 +105,40 @@ sensor:
   - platform: internal_temperature
     name: "ESP32 Temperature"
 
+# Climate components (Thermostats)
+climate:
+  # Zone 1 Heating Thermostat
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Heating"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false
+    
+  # Zone 1 Cooling Thermostat (optional)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Cooling"
+    zone_id: 1
+    supports_heat: false
+    supports_cool: true
+    
+  # Zone 2 Heating Thermostat
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 2 Heating"
+    zone_id: 2
+    supports_heat: true
+    supports_cool: false
+    
+  # Zone 2 Cooling Thermostat (optional)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 2 Cooling"
+    zone_id: 2
+    supports_heat: false
+    supports_cool: true
+
 # Binary sensors for states
 binary_sensor:
   - platform: heishamon

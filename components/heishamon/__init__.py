@@ -7,6 +7,8 @@ DEPENDENCIES = ['uart']
 CODEOWNERS = ["@AntorFR"]
 MULTI_CONF = True
 
+CONF_HEISHAMON_ID = "heishamon_id"
+
 heishamon_ns = cg.esphome_ns.namespace('heishamon')
 HeishamonComponent = heishamon_ns.class_('HeishamonComponent', cg.Component, uart.UARTDevice)
 

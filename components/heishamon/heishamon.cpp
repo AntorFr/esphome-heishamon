@@ -1,4 +1,5 @@
 #include "heishamon.h"
+#include "climate.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 
@@ -194,12 +195,44 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
     if (topic.byte_index < data.size()) {
       float value = topic.decode_func(data[topic.byte_index]);
       
+      // Update internal temperature values for climate components
+      if (topic.name == "z1_temp") {
+        this->zone1_current_temp_ = value;
+      } else if (topic.name == "z2_temp") {
+        this->zone2_current_temp_ = value;
+      } else if (topic.name == "z1_heat_request_temp") {
+        this->zone1_heat_target_temp_ = value;
+      } else if (topic.name == "z1_cool_request_temp") {
+        this->zone1_cool_target_temp_ = value;
+      } else if (topic.name == "z2_heat_request_temp") {
+        this->zone2_heat_target_temp_ = value;
+      } else if (topic.name == "z2_cool_request_temp") {
+        this->zone2_cool_target_temp_ = value;
+      } else if (topic.name == "operating_mode_state") {
+        // Update operating mode states based on value
+        this->heat_mode_enabled_ = (static_cast<int>(value) & 0x01) != 0;
+        this->cool_mode_enabled_ = (static_cast<int>(value) & 0x02) != 0;
+      } else if (topic.name == "zones_state") {
+        // Update zone states based on value
+        int zone_state = static_cast<int>(value);
+        this->zone1_heat_enabled_ = (zone_state & 0x01) != 0;
+        this->zone2_heat_enabled_ = (zone_state & 0x02) != 0;
+        // For simplicity, assume same for cooling - could be refined
+        this->zone1_cool_enabled_ = (zone_state & 0x01) != 0;
+        this->zone2_cool_enabled_ = (zone_state & 0x02) != 0;
+      }
+      
       // Call callback if registered
       auto it = this->sensor_callbacks_.find(topic.name);
       if (it != this->sensor_callbacks_.end()) {
         it->second(value);
       }
     }
+  }
+  
+  // Update all registered climate components
+  for (auto *climate : this->climate_components_) {
+    climate->update_from_heishamon();
   }
 }
 
@@ -413,6 +446,157 @@ void HeishamonComponent::init_topics() {
     this->optional_topics_.push_back({"z1_mixing_valve", 4, 
       [this](uint8_t input) { return static_cast<float>((input >> 5) & 0b11); }, "", "Zone 1 mixing valve"});
   }
+}
+
+// Climate control implementation
+void HeishamonComponent::register_climate_component(HeishaMonClimate *climate) {
+  this->climate_components_.push_back(climate);
+}
+
+// Heat pump mode control
+void HeishamonComponent::set_heat_mode_enabled(bool enabled) {
+  if (this->heat_mode_enabled_ != enabled) {
+    this->heat_mode_enabled_ = enabled;
+    // Send command to enable/disable heat mode globally
+    this->create_command("SetOperationMode", enabled ? 1 : 0);
+  }
+}
+
+void HeishamonComponent::set_cool_mode_enabled(bool enabled) {
+  if (this->cool_mode_enabled_ != enabled) {
+    this->cool_mode_enabled_ = enabled;
+    // Send command to enable/disable cool mode globally  
+    this->create_command("SetOperationMode", enabled ? 2 : 0);
+  }
+}
+
+// Zone control
+void HeishamonComponent::set_zone1_heat_enabled(bool enabled) {
+  if (this->zone1_heat_enabled_ != enabled) {
+    this->zone1_heat_enabled_ = enabled;
+    // Update zone states - Zone 1 bit
+    uint8_t zone_state = 0;
+    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
+    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
+    this->create_command("SetZones", zone_state);
+  }
+}
+
+void HeishamonComponent::set_zone1_cool_enabled(bool enabled) {
+  if (this->zone1_cool_enabled_ != enabled) {
+    this->zone1_cool_enabled_ = enabled;
+    // Update zone states - Zone 1 bit
+    uint8_t zone_state = 0;
+    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
+    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
+    this->create_command("SetZones", zone_state);
+  }
+}
+
+void HeishamonComponent::set_zone2_heat_enabled(bool enabled) {
+  if (this->zone2_heat_enabled_ != enabled) {
+    this->zone2_heat_enabled_ = enabled;
+    // Update zone states - Zone 2 bit
+    uint8_t zone_state = 0;
+    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
+    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
+    this->create_command("SetZones", zone_state);
+  }
+}
+
+void HeishamonComponent::set_zone2_cool_enabled(bool enabled) {
+  if (this->zone2_cool_enabled_ != enabled) {
+    this->zone2_cool_enabled_ = enabled;
+    // Update zone states - Zone 2 bit
+    uint8_t zone_state = 0;
+    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
+    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
+    this->create_command("SetZones", zone_state);
+  }
+}
+
+// Temperature setters
+void HeishamonComponent::set_zone1_heat_target_temperature(float temperature) {
+  if (fabsf(this->zone1_heat_target_temp_ - temperature) > 0.1f) {
+    this->zone1_heat_target_temp_ = temperature;
+    // Convert to heat pump protocol (typically temperature * 2 + offset)
+    uint8_t temp_value = static_cast<uint8_t>(temperature);
+    this->create_command("SetZ1HeatRequestTemperature", temp_value);
+  }
+}
+
+void HeishamonComponent::set_zone1_cool_target_temperature(float temperature) {
+  if (fabsf(this->zone1_cool_target_temp_ - temperature) > 0.1f) {
+    this->zone1_cool_target_temp_ = temperature;
+    uint8_t temp_value = static_cast<uint8_t>(temperature);
+    this->create_command("SetZ1CoolRequestTemperature", temp_value);
+  }
+}
+
+void HeishamonComponent::set_zone2_heat_target_temperature(float temperature) {
+  if (fabsf(this->zone2_heat_target_temp_ - temperature) > 0.1f) {
+    this->zone2_heat_target_temp_ = temperature;
+    uint8_t temp_value = static_cast<uint8_t>(temperature);
+    this->create_command("SetZ2HeatRequestTemperature", temp_value);
+  }
+}
+
+void HeishamonComponent::set_zone2_cool_target_temperature(float temperature) {
+  if (fabsf(this->zone2_cool_target_temp_ - temperature) > 0.1f) {
+    this->zone2_cool_target_temp_ = temperature;
+    uint8_t temp_value = static_cast<uint8_t>(temperature);
+    this->create_command("SetZ2CoolRequestTemperature", temp_value);
+  }
+}
+
+// Temperature getters
+float HeishamonComponent::get_zone1_current_temperature() const {
+  return this->zone1_current_temp_;
+}
+
+float HeishamonComponent::get_zone2_current_temperature() const {
+  return this->zone2_current_temp_;
+}
+
+float HeishamonComponent::get_zone1_heat_target_temperature() const {
+  return this->zone1_heat_target_temp_;
+}
+
+float HeishamonComponent::get_zone1_cool_target_temperature() const {
+  return this->zone1_cool_target_temp_;
+}
+
+float HeishamonComponent::get_zone2_heat_target_temperature() const {
+  return this->zone2_heat_target_temp_;
+}
+
+float HeishamonComponent::get_zone2_cool_target_temperature() const {
+  return this->zone2_cool_target_temp_;
+}
+
+// State getters
+bool HeishamonComponent::get_heat_mode_enabled() const {
+  return this->heat_mode_enabled_;
+}
+
+bool HeishamonComponent::get_cool_mode_enabled() const {
+  return this->cool_mode_enabled_;
+}
+
+bool HeishamonComponent::get_zone1_heat_enabled() const {
+  return this->zone1_heat_enabled_;
+}
+
+bool HeishamonComponent::get_zone1_cool_enabled() const {
+  return this->zone1_cool_enabled_;
+}
+
+bool HeishamonComponent::get_zone2_heat_enabled() const {
+  return this->zone2_heat_enabled_;
+}
+
+bool HeishamonComponent::get_zone2_cool_enabled() const {
+  return this->zone2_cool_enabled_;
 }
 
 }  // namespace heishamon

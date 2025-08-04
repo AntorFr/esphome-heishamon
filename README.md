@@ -11,6 +11,7 @@ HeishaMon is a popular open-source project for monitoring and controlling Panaso
 - **Serial Communication**: Full protocol implementation compatible with original HeishaMon
 - **Sensor Support**: Temperature, power, frequency, and flow sensors
 - **Binary Sensors**: Heat pump state monitoring
+- **Climate Controls**: Zone thermostats for heating and cooling control
 - **Switch Controls**: Force DHW, defrost, holiday mode commands
 - **Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
 - **Platform Support**: ESP8266 and ESP32 with optimized configurations
@@ -38,11 +39,15 @@ esphome-heishamon/
 │       ├── binary_sensor.py      # Binary sensor configuration
 │       ├── binary_sensor.h       # Binary sensor header
 │       ├── binary_sensor.cpp     # Binary sensor implementation
+│       ├── climate.py            # Climate/thermostat configuration
+│       ├── climate.h             # Climate header
+│       ├── climate.cpp           # Climate implementation
 │       ├── switch.py             # Switch configuration
 │       ├── switch.h              # Switch header
 │       └── switch.cpp            # Switch implementation
 ├── docs/
 │   ├── WIRING.md                # Hardware wiring diagrams
+│   ├── CLIMATE.md               # Climate/thermostat documentation
 │   └── DEBUGGING.md             # Troubleshooting guide
 ├── example-esp8266.yaml         # ESP8266 configuration example
 ├── example-esp32.yaml           # ESP32 configuration example
@@ -138,6 +143,36 @@ heishamon:
   - `true`: Listen-only mode, sends no commands (use if CZ-TAW1 is connected)
   - `false`: Normal mode, can send commands
 - **optional_pcb**: Support for optional PCB data (additional zones, etc.)
+
+## Available Components
+
+The HeishaMon ESPHome component provides several platform types:
+
+### Climate (Thermostats)
+
+Zone-based thermostat controls for heating and cooling. See **[`docs/CLIMATE.md`](docs/CLIMATE.md)** for detailed configuration.
+
+```yaml
+climate:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Heating"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false
+```
+
+### Sensors
+
+Temperature, power, frequency, and flow sensors from heat pump data.
+
+### Binary Sensors  
+
+State monitoring for heat pump operation status.
+
+### Switches
+
+Control switches for DHW force, defrost, holiday mode, etc.
 
 ### Available Sensors
 

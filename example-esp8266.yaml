@@ -99,6 +99,24 @@ sensor:
     topic: "operation_mode"
     name: "Operation Mode"
 
+# Climate components (Thermostats)
+climate:
+  # Zone 1 Heating Thermostat
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Heating"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false
+    
+  # Zone 2 Heating Thermostat
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 2 Heating"
+    zone_id: 2
+    supports_heat: true
+    supports_cool: false
+
 # Binary sensors for states
 binary_sensor:
   - platform: heishamon
