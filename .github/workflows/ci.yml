@@ -133,7 +133,7 @@ jobs:
     - name: Check documentation completeness
       run: |
         # Check that all required files exist
-        required_files=("README.md" "DEBUGGING.md" "example-esp8266.yaml" "example-esp32.yaml")
+        required_files=("README.md" "docs/DEBUGGING.md" "docs/WIRING.md" "example-esp8266.yaml" "example-esp32.yaml")
         for file in "${required_files[@]}"; do
           if [[ ! -f "$file" ]]; then
             echo "❌ Missing required file: $file"
