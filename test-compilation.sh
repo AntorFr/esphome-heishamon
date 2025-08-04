@@ -23,6 +23,15 @@ source .venv/bin/activate
 echo "📦 Installing/updating ESPHome..."
 pip install --upgrade esphome > /dev/null 2>&1
 
+# Create test secrets if they don't exist
+if [ ! -f "secrets.yaml" ]; then
+    echo "📝 Creating test secrets.yaml..."
+    cat > secrets.yaml << EOF
+wifi_ssid: "test_network"
+wifi_password: "test_password"
+EOF
+fi
+
 # Check ESPHome version
 echo "📋 ESPHome version: $(python3 -m esphome version)"
 
