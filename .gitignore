@@ -1,0 +1,43 @@
+# ESPHome HeishaMon .gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ESPHome build directories
+build/
+.pioenvs/
+.pio/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local secrets and config
+secrets.yaml
+secrets*.yaml
+!secrets.yaml.example
+
+# Log files
+*.log
+esphome.log
+
+# Temporary files
+*.tmp
+*.temp
+.esphome/
