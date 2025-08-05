@@ -201,6 +201,12 @@ climate:
     zone_id: 2
     supports_heat: false
     supports_cool: true
+    
+  # Water Heater (Climate-based implementation) - Phase 4
+  - platform: heishamon
+    type: water_heater
+    heishamon_id: heisha_main
+    name: "DHW Water Heater"
 
 # Binary sensors for states
 binary_sensor:
@@ -336,15 +342,6 @@ number:
     heishamon_id: heisha_main
     type: "dhw_target_temp"
     name: "DHW Target Temperature"
-
-# Water Heater (Climate-based implementation) - Phase 4
-# Note: For now, commented as it requires additional configuration
-# Will be uncommented once the water_heater platform is implemented
-# climate:
-#   - platform: heishamon
-#     platform_type: water_heater
-#     heishamon_id: heisha_main
-#     name: "DHW Water Heater"
 
 # Status LED for ESP32 (if available)
 light:

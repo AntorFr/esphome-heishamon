@@ -136,6 +136,12 @@ climate:
     zone_id: 2
     supports_heat: true
     supports_cool: false
+    
+  # Water Heater (Essential for ESP8266) - Phase 4
+  - platform: heishamon
+    type: water_heater
+    heishamon_id: heisha_main
+    name: "DHW Water Heater"
 
 # Binary sensors for states
 binary_sensor:
