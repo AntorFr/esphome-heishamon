@@ -1,0 +1,23 @@
+# Global ownership - AntorFr is the main maintainer
+* @AntorFr
+
+# Component core - requires review for any changes
+/components/heishamon/ @AntorFr
+
+# Configuration examples - critical for user experience  
+example*.yaml @AntorFr
+/secrets.yaml.example @AntorFr
+
+# Documentation - ensure accuracy and completeness
+/docs/ @AntorFr
+README.md @AntorFr
+CHANGELOG.md @AntorFr
+
+# GitHub workflows and CI/CD - critical infrastructure
+/.github/ @AntorFr
+
+# Testing and validation scripts
+test-compilation.sh @AntorFr
+
+# Release management
+RELEASE_NOTES*.md @AntorFr
