@@ -12,6 +12,7 @@ namespace heishamon {
 
 // Forward declarations
 class HeishaMonClimate;
+class HeishamonNumber;
 
 static const char *const TAG = "heishamon";
 
@@ -102,6 +103,10 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   
   // Climate component registration
   void register_climate_component(class HeishaMonClimate *climate);
+  
+  // Number component registration and support
+  void register_number(class HeishamonNumber *number);
+  bool send_number_command(const std::string &command, float value);
 
  protected:
   uint32_t update_interval_{30000};
@@ -129,9 +134,13 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   
   // Callbacks des sensors
   std::map<std::string, std::function<void(float)>> sensor_callbacks_;
+  std::map<std::string, std::function<void(bool)>> binary_sensor_callbacks_;
   
   // Climate components
   std::vector<class HeishaMonClimate *> climate_components_;
+  
+  // Number components
+  std::vector<class HeishamonNumber *> number_components_;
   
   // Climate state tracking
   bool heat_mode_enabled_{false};

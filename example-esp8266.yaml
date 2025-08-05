@@ -197,3 +197,10 @@ select:
     heishamon_id: heisha_main
     type: "bivalent_mode"
     name: "Bivalent Mode"
+
+# Number entities (essential for ESP8266)
+number:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "dhw_target_temp"
+    name: "DHW Target Temperature"

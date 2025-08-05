@@ -320,6 +320,23 @@ select:
     type: "smart_grid_mode"
     name: "Smart Grid Mode"
 
+# Number entities for precise controls (Phase 3)
+number:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "z1_heat_target_temp"
+    name: "Zone 1 Heat Target Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "z2_heat_target_temp"
+    name: "Zone 2 Heat Target Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "dhw_target_temp"
+    name: "DHW Target Temperature"
+
 # Status LED for ESP32 (if available)
 light:
   - platform: status_led

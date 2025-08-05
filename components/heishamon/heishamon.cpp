@@ -1,5 +1,6 @@
 #include "heishamon.h"
 #include "climate.h"
+#include "number.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 
@@ -737,6 +738,53 @@ bool HeishamonComponent::get_zone2_heat_enabled() const {
 
 bool HeishamonComponent::get_zone2_cool_enabled() const {
   return this->zone2_cool_enabled_;
+}
+
+// Number component support
+void HeishamonComponent::register_number(HeishamonNumber *number) {
+  this->number_components_.push_back(number);
+}
+
+bool HeishamonComponent::send_number_command(const std::string &command, float value) {
+  if (this->listen_only_) {
+    ESP_LOGW(TAG, "Cannot send number command in listen-only mode");
+    return false;
+  }
+  
+  ESP_LOGD(TAG, "Sending number command: %s = %.1f", command.c_str(), value);
+  
+  // Map number commands to HeishaMon protocol
+  std::string heisha_command;
+  uint8_t command_value = 0x00;
+  
+  // Temperature control commands
+  if (command == "SetZ1HeatTargetTemp") {
+    heisha_command = "SetZ1HeatRequestTemperature";
+    command_value = static_cast<uint8_t>(value);
+  } else if (command == "SetZ2HeatTargetTemp") {
+    heisha_command = "SetZ2HeatRequestTemperature";
+    command_value = static_cast<uint8_t>(value);
+  } else if (command == "SetZ1CoolTargetTemp") {
+    heisha_command = "SetZ1CoolRequestTemperature";
+    command_value = static_cast<uint8_t>(value);
+  } else if (command == "SetZ2CoolTargetTemp") {
+    heisha_command = "SetZ2CoolRequestTemperature";
+    command_value = static_cast<uint8_t>(value);
+  } else if (command == "SetDHWTargetTemp") {
+    heisha_command = "SetDHWTargetTemp";
+    command_value = static_cast<uint8_t>(value);
+  }
+  
+  // For now, implement basic temperature controls
+  // More advanced commands can be added later as needed
+  else {
+    ESP_LOGW(TAG, "Number command not yet implemented: %s", command.c_str());
+    return false;
+  }
+  
+  // Create and send command using existing infrastructure
+  this->create_command(heisha_command, command_value);
+  return true;
 }
 
 }  // namespace heishamon
