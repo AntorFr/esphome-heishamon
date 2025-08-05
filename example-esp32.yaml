@@ -226,16 +226,17 @@ binary_sensor:
     topic: "anti_freeze_mode"
     name: "Anti Freeze Mode"
     
-  - platform: heishamon
-    heishamon_id: heisha_main
-    topic: "external_backup_heater"
-    name: "External Backup Heater"
-    device_class: heat
-    
-  - platform: heishamon
-    heishamon_id: heisha_main
-    topic: "bivalent_control"
-    name: "Bivalent Control"
+  # Phase 2 binary sensors (commented until implemented)
+  # - platform: heishamon
+  #   heishamon_id: heisha_main
+  #   topic: "external_backup_heater"
+  #   name: "External Backup Heater"
+  #   device_class: heat
+  #   
+  # - platform: heishamon
+  #   heishamon_id: heisha_main
+  #   topic: "bivalent_control"
+  #   name: "Bivalent Control"
 
 # GPIO to enable/disable transmission (ESP32)
 output:
@@ -267,18 +268,8 @@ switch:
     
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "buffer_tank_installed"
+    command: "buffer_installed"
     name: "Buffer Tank Installed"
-    
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "external_thermostat_1"
-    name: "External Thermostat 1"
-    
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "external_thermostat_2"
-    name: "External Thermostat 2"
     
   - platform: heishamon
     heishamon_id: heisha_main
@@ -292,43 +283,25 @@ switch:
     
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "relay_1"
-    name: "Relay 1"
-    
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "relay_2"
-    name: "Relay 2"
+    command: "quiet_mode"
+    name: "Quiet Mode"
 
-# Select entities for configuration
-select:
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "bivalent_mode"
-    name: "Bivalent Mode"
-    options:
-      - "Always Heat Pump"
-      - "Eco Mode"
-      - "Comfort Mode"
-      
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "external_pad_heater_type"
-    name: "External Pad Heater Type"
-    options:
-      - "Disabled"
-      - "Type 1"
-      - "Type 2"
-      - "Type 3"
-      
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "smart_grid_mode"
-    name: "Smart Grid Mode"
-    options:
-      - "Normal"
-      - "SG Ready 1"
-      - "SG Ready 2"
+# Select entities for configuration (Phase 2 - commented for testing)
+# select:
+#   - platform: heishamon
+#     heishamon_id: heisha_main
+#     type: "bivalent_mode"
+#     name: "Bivalent Mode"
+#       
+#   - platform: heishamon
+#     heishamon_id: heisha_main
+#     type: "external_pad_heater_type"
+#     name: "External Pad Heater Type"
+#       
+#   - platform: heishamon
+#     heishamon_id: heisha_main
+#     type: "smart_grid_mode"
+#     name: "Smart Grid Mode"
     
   - platform: heishamon
     heishamon_id: heisha_main

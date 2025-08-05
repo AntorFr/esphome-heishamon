@@ -185,16 +185,12 @@ switch:
     command: "external_control"
     name: "External Control"
 
-# Select entities (limited for ESP8266)
-select:
-  - platform: heishamon
-    heishamon_id: heisha_main
-    command: "bivalent_mode"
-    name: "Bivalent Mode"
-    options:
-      - "Always Heat Pump"
-      - "Eco Mode"
-      - "Comfort Mode"
+# Select entities (commented for ESP8266 memory optimization)
+# select:
+#   - platform: heishamon
+#     heishamon_id: heisha_main
+#     type: "bivalent_mode"
+#     name: "Bivalent Mode"
 
   # Switch to control GPIO activation
   - platform: output
