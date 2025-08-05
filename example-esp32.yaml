@@ -209,6 +209,33 @@ binary_sensor:
     topic: "heatpump_state"
     name: "Heat Pump State"
     device_class: running
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "quiet_mode_schedule"
+    name: "Quiet Mode Schedule"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "pump_running"
+    name: "Pump Running"
+    device_class: running
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "anti_freeze_mode"
+    name: "Anti Freeze Mode"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "external_backup_heater"
+    name: "External Backup Heater"
+    device_class: heat
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "bivalent_control"
+    name: "Bivalent Control"
 
 # GPIO to enable/disable transmission (ESP32)
 output:
@@ -237,6 +264,71 @@ switch:
     heishamon_id: heisha_main
     command: "holiday_mode"
     name: "Holiday Mode"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "buffer_tank_installed"
+    name: "Buffer Tank Installed"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "external_thermostat_1"
+    name: "External Thermostat 1"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "external_thermostat_2"
+    name: "External Thermostat 2"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "external_control"
+    name: "External Control"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "bivalent_control"
+    name: "Bivalent Control"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "relay_1"
+    name: "Relay 1"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "relay_2"
+    name: "Relay 2"
+
+# Select entities for configuration
+select:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "bivalent_mode"
+    name: "Bivalent Mode"
+    options:
+      - "Always Heat Pump"
+      - "Eco Mode"
+      - "Comfort Mode"
+      
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "external_pad_heater_type"
+    name: "External Pad Heater Type"
+    options:
+      - "Disabled"
+      - "Type 1"
+      - "Type 2"
+      - "Type 3"
+      
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "smart_grid_mode"
+    name: "Smart Grid Mode"
+    options:
+      - "Normal"
+      - "SG Ready 1"
+      - "SG Ready 2"
     
   - platform: heishamon
     heishamon_id: heisha_main

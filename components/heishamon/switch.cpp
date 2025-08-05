@@ -67,6 +67,44 @@ std::vector<uint8_t> HeishamonSwitch::create_command(bool state) {
   else if (this->command_ == "heatpump_state") {
     cmd[4] = state ? 0x02 : 0x01;  // Heat pump state
   }
+  
+  // PHASE 2: Advanced switches
+  else if (this->command_ == "buffer_installed") {
+    cmd[10] = state ? 0x01 : 0x00;  // Buffer tank setting
+  }
+  else if (this->command_ == "external_control") {
+    cmd[11] = state ? 0x01 : 0x00;  // External control enabled
+  }
+  else if (this->command_ == "external_error_signal") {
+    cmd[12] = state ? 0x01 : 0x00;  // External error signal
+  }
+  else if (this->command_ == "external_compressor_control") {
+    cmd[13] = state ? 0x01 : 0x00;  // External compressor control
+  }
+  else if (this->command_ == "external_heat_cool_control") {
+    cmd[14] = state ? 0x01 : 0x00;  // External heat/cool control
+  }
+  else if (this->command_ == "bivalent_control") {
+    cmd[15] = state ? 0x01 : 0x00;  // Bivalent control
+  }
+  else if (this->command_ == "main_schedule_state") {
+    cmd[16] = state ? 0x01 : 0x00;  // Main schedule
+  }
+  else if (this->command_ == "alt_external_sensor") {
+    cmd[17] = state ? 0x01 : 0x00;  // Alternative external sensor
+  }
+  else if (this->command_ == "sterilization") {
+    cmd[6] = state ? 0x01 : 0x00;   // Force sterilization
+  }
+  else if (this->command_ == "quiet_mode") {
+    cmd[7] = state ? 0x01 : 0x00;   // Quiet mode
+  }
+  else if (this->command_ == "relay_1") {
+    cmd[18] = state ? 0x01 : 0x00;  // GPIO Relay 1
+  }
+  else if (this->command_ == "relay_2") {
+    cmd[19] = state ? 0x01 : 0x00;  // GPIO Relay 2
+  }
   else {
     // Unknown command
     return {};

@@ -326,6 +326,38 @@ bool HeishamonComponent::send_command(const std::vector<uint8_t> &command) {
   return true;
 }
 
+void HeishamonComponent::send_command(const std::string &command, const std::string &value) {
+  ESP_LOGD(TAG, "Sending string command: %s = %s", command.c_str(), value.c_str());
+  
+  if (this->listen_only_) {
+    ESP_LOGW(TAG, "Cannot send command in listen-only mode");
+    return;
+  }
+  
+  // Convert string command to appropriate byte command
+  // This is a simplified implementation - in practice, you'd have a mapping
+  // of command names to their corresponding byte sequences
+  
+  if (command == "SetBivalentMode") {
+    uint8_t val = static_cast<uint8_t>(std::stoi(value));
+    this->create_command("SetBivalentMode", val);
+  } else if (command == "SetExternalPadHeater") {
+    uint8_t val = static_cast<uint8_t>(std::stoi(value));
+    this->create_command("SetExternalPadHeater", val);
+  } else if (command == "SetSmartGridMode") {
+    uint8_t val = static_cast<uint8_t>(std::stoi(value));
+    this->create_command("SetSmartGridMode", val);
+  } else if (command == "SetHeatingMode") {
+    uint8_t val = static_cast<uint8_t>(std::stoi(value));
+    this->create_command("SetHeatingMode", val);
+  } else if (command == "SetCoolingMode") {
+    uint8_t val = static_cast<uint8_t>(std::stoi(value));
+    this->create_command("SetCoolingMode", val);
+  } else {
+    ESP_LOGW(TAG, "Unknown string command: %s", command.c_str());
+  }
+}
+
 // Decoding functions ported from HeishaMon
 float HeishamonComponent::unknown(uint8_t input) { return -1; }
 

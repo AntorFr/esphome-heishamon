@@ -144,6 +144,12 @@ binary_sensor:
     topic: "heatpump_state"
     name: "Heat Pump State"
     device_class: running
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "pump_running"
+    name: "Pump Running"
+    device_class: running
 
 # GPIO to enable/disable transmission (optional)
 output:
@@ -172,6 +178,23 @@ switch:
     heishamon_id: heisha_main
     command: "heatpump_state"
     name: "Heat Pump State"
+    
+  # Essential switches for ESP8266 (memory limited)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "external_control"
+    name: "External Control"
+
+# Select entities (limited for ESP8266)
+select:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "bivalent_mode"
+    name: "Bivalent Mode"
+    options:
+      - "Always Heat Pump"
+      - "Eco Mode"
+      - "Comfort Mode"
 
   # Switch to control GPIO activation
   - platform: output

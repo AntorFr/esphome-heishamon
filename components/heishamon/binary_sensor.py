@@ -10,11 +10,31 @@ HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", binary_sens
 
 # Topics for binary sensors
 HEISHA_BINARY_TOPICS = {
+    # Basic binary sensors (Phase 1)
     "heatpump_state": "Heat pump state",
     "defrosting_state": "Defrosting state", 
     "dhw_heater_state": "DHW heater state",
     "room_heater_state": "Room heater state",
     "sterilization_state": "Sterilization state",
+    
+    # PHASE 2: Advanced binary sensors from HA module
+    "quiet_mode_schedule": "Quiet Mode Schedule",
+    "internal_heater_state": "Internal Heater State",
+    "external_heater_state": "External Heater State", 
+    "force_heater_state": "Force Heater Status",
+    "pump_running": "Pump Running",
+    "dhw_installed": "DHW Installed",
+    "anti_freeze_mode": "Anti Freeze Mode",
+    "optional_pcb": "Optional PCB Enabled",
+    "bivalent_advanced_heat": "Bivalent Advanced Heat",
+    "bivalent_advanced_dhw": "Bivalent Advanced DHW",
+    
+    # Optional PCB binary sensors
+    "z1_water_pump": "Zone 1 Water Pump Request",
+    "z2_water_pump": "Zone 2 Water Pump Request",
+    "pool_water_pump": "Pool Water Pump Request",
+    "solar_water_pump": "Solar Water Pump Request",
+    "alarm_state": "Alarm State",
 }
 
 CONFIG_SCHEMA = cv.Schema(
