@@ -46,7 +46,7 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(HeishamonSelect),
         cv.GenerateID("heishamon_id"): cv.use_id(HeishamonComponent),
-        cv.Required("select_type"): cv.one_of(*HEISHA_SELECT_OPTIONS.keys(), lower=True),
+        cv.Required("type"): cv.one_of(*HEISHA_SELECT_OPTIONS.keys(), lower=True),
     }
 ).extend(select.select_schema(HeishamonSelect))
 
@@ -57,10 +57,10 @@ async def to_code(config):
 
     parent = await cg.get_variable(config["heishamon_id"])
     cg.add(var.set_parent(parent))
-    cg.add(var.set_select_type(config["select_type"]))
+    cg.add(var.set_select_type(config["type"]))
     
     # Configure options based on select type
-    select_config = HEISHA_SELECT_OPTIONS[config["select_type"]]
+    select_config = HEISHA_SELECT_OPTIONS[config["type"]]
     cg.add(var.set_command(select_config["command"]))
     cg.add(var.set_options(select_config["options"]))
     cg.add(var.set_initial_option(select_config["default"]))

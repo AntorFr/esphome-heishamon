@@ -185,15 +185,15 @@ switch:
     command: "external_control"
     name: "External Control"
 
-# Select entities (commented for ESP8266 memory optimization)
-# select:
-#   - platform: heishamon
-#     heishamon_id: heisha_main
-#     type: "bivalent_mode"
-#     name: "Bivalent Mode"
-
   # Switch to control GPIO activation
   - platform: output
     name: "HeishaMon Enable"
     output: heisha_enable
     restore_mode: RESTORE_DEFAULT_ON
+
+# Select entities (limited for ESP8266 memory)
+select:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "bivalent_mode"
+    name: "Bivalent Mode"

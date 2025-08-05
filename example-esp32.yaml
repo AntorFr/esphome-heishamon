@@ -285,23 +285,6 @@ switch:
     heishamon_id: heisha_main
     command: "quiet_mode"
     name: "Quiet Mode"
-
-# Select entities for configuration (Phase 2 - commented for testing)
-# select:
-#   - platform: heishamon
-#     heishamon_id: heisha_main
-#     type: "bivalent_mode"
-#     name: "Bivalent Mode"
-#       
-#   - platform: heishamon
-#     heishamon_id: heisha_main
-#     type: "external_pad_heater_type"
-#     name: "External Pad Heater Type"
-#       
-#   - platform: heishamon
-#     heishamon_id: heisha_main
-#     type: "smart_grid_mode"
-#     name: "Smart Grid Mode"
     
   - platform: heishamon
     heishamon_id: heisha_main
@@ -319,6 +302,23 @@ switch:
     name: "HeishaMon OT Enable"
     output: heisha_ot_enable
     restore_mode: RESTORE_DEFAULT_OFF
+
+# Select entities for configuration
+select:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "bivalent_mode"
+    name: "Bivalent Mode"
+      
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "external_pad_heater_type"
+    name: "External Pad Heater Type"
+      
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "smart_grid_mode"
+    name: "Smart Grid Mode"
 
 # Status LED for ESP32 (if available)
 light:
