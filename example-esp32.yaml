@@ -337,6 +337,15 @@ number:
     type: "dhw_target_temp"
     name: "DHW Target Temperature"
 
+# Water Heater (Climate-based implementation) - Phase 4
+# Note: For now, commented as it requires additional configuration
+# Will be uncommented once the water_heater platform is implemented
+# climate:
+#   - platform: heishamon
+#     platform_type: water_heater
+#     heishamon_id: heisha_main
+#     name: "DHW Water Heater"
+
 # Status LED for ESP32 (if available)
 light:
   - platform: status_led

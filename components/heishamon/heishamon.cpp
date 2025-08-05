@@ -1,6 +1,7 @@
 #include "heishamon.h"
 #include "climate.h"
 #include "number.h"
+#include "water_heater.h"
 #include "esphome/core/log.h"
 #include "esphome/core/hal.h"
 
@@ -209,6 +210,14 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
         this->zone2_heat_target_temp_ = value;
       } else if (topic.name == "z2_cool_request_temp") {
         this->zone2_cool_target_temp_ = value;
+      } else if (topic.name == "dhw_temp") {
+        this->dhw_current_temp_ = value;
+      } else if (topic.name == "dhw_target_temp") {
+        this->dhw_target_temp_ = value;
+      } else if (topic.name == "dhw_heating") {
+        this->dhw_heating_state_ = (static_cast<int>(value) == 1);
+      } else if (topic.name == "dhw_mode") {
+        this->dhw_mode_ = static_cast<int>(value);
       } else if (topic.name == "operating_mode_state") {
         // Update operating mode states based on value
         this->heat_mode_enabled_ = (static_cast<int>(value) & 0x01) != 0;
@@ -234,6 +243,14 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
   // Update all registered climate components
   for (auto *climate : this->climate_components_) {
     climate->update_from_heishamon();
+  }
+  
+  // Update all registered water heater components
+  for (auto *water_heater : this->water_heater_components_) {
+    water_heater->update_current_temperature(this->dhw_current_temp_);
+    water_heater->update_target_temperature(this->dhw_target_temp_);
+    water_heater->update_dhw_state(this->dhw_heating_state_);
+    water_heater->update_dhw_mode(this->dhw_mode_);
   }
 }
 
@@ -785,6 +802,29 @@ bool HeishamonComponent::send_number_command(const std::string &command, float v
   // Create and send command using existing infrastructure
   this->create_command(heisha_command, command_value);
   return true;
+}
+
+// Water Heater component registration and support methods
+void HeishamonComponent::register_water_heater(HeishamonWaterHeater *water_heater) {
+  this->water_heater_components_.push_back(water_heater);
+  water_heater->set_parent(this);
+  ESP_LOGD(TAG, "Registered Water Heater component");
+}
+
+float HeishamonComponent::get_dhw_current_temperature() const {
+  return this->dhw_current_temp_;
+}
+
+float HeishamonComponent::get_dhw_target_temperature() const {
+  return this->dhw_target_temp_;
+}
+
+bool HeishamonComponent::get_dhw_heating_state() const {
+  return this->dhw_heating_state_;
+}
+
+int HeishamonComponent::get_dhw_mode() const {
+  return this->dhw_mode_;
 }
 
 }  // namespace heishamon

@@ -13,6 +13,7 @@ namespace heishamon {
 // Forward declarations
 class HeishaMonClimate;
 class HeishamonNumber;
+class HeishamonWaterHeater;
 
 static const char *const TAG = "heishamon";
 
@@ -107,6 +108,13 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Number component registration and support
   void register_number(class HeishamonNumber *number);
   bool send_number_command(const std::string &command, float value);
+  
+  // Water Heater component registration and support
+  void register_water_heater(class HeishamonWaterHeater *water_heater);
+  float get_dhw_current_temperature() const;
+  float get_dhw_target_temperature() const;
+  bool get_dhw_heating_state() const;
+  int get_dhw_mode() const;
 
  protected:
   uint32_t update_interval_{30000};
@@ -142,6 +150,9 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Number components
   std::vector<class HeishamonNumber *> number_components_;
   
+  // Water Heater components
+  std::vector<class HeishamonWaterHeater *> water_heater_components_;
+  
   // Climate state tracking
   bool heat_mode_enabled_{false};
   bool cool_mode_enabled_{false};
@@ -157,6 +168,12 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   float zone1_cool_target_temp_{20.0f};
   float zone2_heat_target_temp_{20.0f};
   float zone2_cool_target_temp_{20.0f};
+  
+  // DHW state tracking
+  float dhw_current_temp_{NAN};
+  float dhw_target_temp_{45.0f};
+  bool dhw_heating_state_{false};
+  int dhw_mode_{0};
   
   // Statistiques
   uint32_t total_reads_{0};
