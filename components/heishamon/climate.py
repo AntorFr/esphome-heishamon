@@ -39,3 +39,5 @@ async def to_code(config):
     cg.add(var.set_zone_id(config[CONF_ZONE_ID]))
     cg.add(var.set_supports_heat(config[CONF_SUPPORTS_HEAT]))
     cg.add(var.set_supports_cool(config[CONF_SUPPORTS_COOL]))
+
+    cg.add(parent.register_climate_component(var))

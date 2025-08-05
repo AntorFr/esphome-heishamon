@@ -101,6 +101,69 @@ sensor:
     topic: "operation_mode"
     name: "Operation Mode"
 
+  # PHASE 1: Advanced sensors
+  # COP (Coefficient of Performance) - Very useful for efficiency monitoring
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "cop"
+    name: "Coefficient of Performance (COP)"
+    accuracy_decimals: 2
+    
+  # Separate power consumption/production by function
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "dhw_power_consumption"
+    name: "DHW Power Consumption"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "dhw_power_production"
+    name: "DHW Power Production"
+    
+  # Zone temperatures
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z1_water_temp"
+    name: "Zone 1 Water Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z2_water_temp"
+    name: "Zone 2 Water Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "room_thermostat_temp"
+    name: "Room Thermostat Temperature"
+    
+  # Temperature deltas (useful for monitoring system efficiency)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "heat_delta"
+    name: "Heat Delta Temperature"
+    
+  # Operating hours (maintenance indicators)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "compressor_operating_hours"
+    name: "Compressor Operating Hours"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "dhw_heater_operating_hours"
+    name: "DHW Heater Operating Hours"
+    
+  # Zone valve control (for advanced systems)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z1_valve_pid"
+    name: "Zone 1 Valve PID"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z2_valve_pid"
+    name: "Zone 2 Valve PID"
+
   # Additional sensor for ESP32 - internal temperature
   - platform: internal_temperature
     name: "ESP32 Temperature"

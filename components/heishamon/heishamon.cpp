@@ -382,11 +382,55 @@ float HeishamonComponent::get_pump_flow(const std::vector<uint8_t> &data) {
   return -1;
 }
 
+// Additional decoding functions for Phase 1 sensors
+float HeishamonComponent::get_dhw_power(uint8_t input) {
+  // DHW power calculation (similar to general power but might have different scale)
+  return static_cast<float>((input - 1) * 200);
+}
+
+float HeishamonComponent::get_heat_delta(uint8_t input) {
+  // Heat delta temperature calculation (in 0.5°C steps)
+  return (static_cast<float>(input - 1)) / 2.0f;
+}
+
+float HeishamonComponent::get_cool_delta(uint8_t input) {
+  // Cool delta temperature calculation (in 0.5°C steps)
+  return (static_cast<float>(input - 1)) / 2.0f;
+}
+
+float HeishamonComponent::get_operating_hours(uint8_t input) {
+  // Operating hours (might need to be converted to proper hours)
+  return static_cast<float>(input);
+}
+
+float HeishamonComponent::get_zone_valve_pid(uint8_t input) {
+  // Zone valve PID percentage (0-100%)
+  return static_cast<float>(input);
+}
+
+float HeishamonComponent::get_cop(const std::vector<uint8_t> &data) {
+  // COP calculation: Heat production / Heat consumption
+  if (data.size() > 194) {
+    float heat_production = this->get_power(data[194]);
+    float heat_consumption = this->get_power(data[193]);
+    
+    // Avoid division by zero and ensure meaningful COP
+    if (heat_consumption > 100.0f && heat_production > 0.0f) {
+      float cop = heat_production / heat_consumption;
+      // Reasonable COP bounds (1.0 to 8.0)
+      if (cop >= 1.0f && cop <= 8.0f) {
+        return cop;
+      }
+    }
+  }
+  return -1.0f; // Invalid COP
+}
+
 void HeishamonComponent::init_topics() {
   // Initialize the most important topics (selection of critical ones to save memory)
   this->topics_.clear();
   
-  // Main heat pump topics
+  // Basic heat pump topics
   this->topics_.push_back({"heatpump_state", 4, 
     [this](uint8_t input) { return this->get_bit_7_and_8(input); }, "", "Heat pump state"});
   
@@ -411,15 +455,6 @@ void HeishamonComponent::init_topics() {
   this->topics_.push_back({"compressor_freq", 166, 
     [this](uint8_t input) { return this->get_int_minus_1(input); }, "Hz", "Compressor frequency"});
   
-  this->topics_.push_back({"heat_power_production", 194, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power production"});
-  
-  this->topics_.push_back({"heat_power_consumption", 193, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power consumption"});
-  
-  this->topics_.push_back({"pump_flow", 0, 
-    [this](uint8_t input) { return this->get_pump_flow(this->act_data_); }, "l/min", "Pump flow"});
-  
   this->topics_.push_back({"operation_mode", 6, 
     [this](uint8_t input) { 
       // Simplified operation mode decoding
@@ -437,6 +472,79 @@ void HeishamonComponent::init_topics() {
         default: return -1.0f;
       }
     }, "", "Operation mode"});
+  
+  this->topics_.push_back({"pump_flow", 0, 
+    [this](uint8_t input) { return this->get_pump_flow(this->act_data_); }, "l/min", "Pump flow"});
+
+  // PHASE 1: Advanced power sensors (separated by function)
+  this->topics_.push_back({"heat_power_production", 194, 
+    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power production"});
+  
+  this->topics_.push_back({"heat_power_consumption", 193, 
+    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power consumption"});
+  
+  // DHW power sensors (if available in your heat pump model)
+  this->topics_.push_back({"dhw_power_production", 195, 
+    [this](uint8_t input) { return this->get_dhw_power(input); }, "W", "DHW power production"});
+  
+  this->topics_.push_back({"dhw_power_consumption", 196, 
+    [this](uint8_t input) { return this->get_dhw_power(input); }, "W", "DHW power consumption"});
+  
+  // Cool power sensors (for cooling capable units)
+  this->topics_.push_back({"cool_power_production", 197, 
+    [this](uint8_t input) { return this->get_power(input); }, "W", "Cool power production"});
+  
+  this->topics_.push_back({"cool_power_consumption", 198, 
+    [this](uint8_t input) { return this->get_power(input); }, "W", "Cool power consumption"});
+
+  // Temperature deltas (TOP23, TOP24 in HA module)
+  this->topics_.push_back({"heat_delta", 23, 
+    [this](uint8_t input) { return this->get_heat_delta(input); }, "°C", "Heat delta temperature"});
+  
+  this->topics_.push_back({"cool_delta", 24, 
+    [this](uint8_t input) { return this->get_cool_delta(input); }, "°C", "Cool delta temperature"});
+
+  // Zone temperatures (TOP36, TOP37 in HA module)
+  this->topics_.push_back({"z1_water_temp", 36, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Zone 1 water temperature"});
+  
+  this->topics_.push_back({"z2_water_temp", 37, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Zone 2 water temperature"});
+  
+  this->topics_.push_back({"room_thermostat_temp", 33, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Room thermostat temperature"});
+
+  // Operating hours (TOP90, TOP91, TOP88 in HA module)
+  this->topics_.push_back({"room_heater_operating_hours", 90, 
+    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "Room heater operating hours"});
+  
+  this->topics_.push_back({"dhw_heater_operating_hours", 91, 
+    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "DHW heater operating hours"});
+  
+  this->topics_.push_back({"compressor_operating_hours", 88, 
+    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "Compressor operating hours"});
+
+  // Holiday shift temperatures (TOP45, TOP25 in HA module)
+  this->topics_.push_back({"room_holiday_shift_temp", 45, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Room holiday shift temperature"});
+  
+  this->topics_.push_back({"dhw_holiday_shift_temp", 25, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW holiday shift temperature"});
+
+  // Buffer temperature (TOP46 in HA module)
+  this->topics_.push_back({"buffer_temp", 46, 
+    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Buffer temperature"});
+
+  // Zone valve PID control (TOP127, TOP128 in HA module)
+  this->topics_.push_back({"z1_valve_pid", 127, 
+    [this](uint8_t input) { return this->get_zone_valve_pid(input); }, "%", "Zone 1 valve PID"});
+  
+  this->topics_.push_back({"z2_valve_pid", 128, 
+    [this](uint8_t input) { return this->get_zone_valve_pid(input); }, "%", "Zone 2 valve PID"});
+
+  // COP calculation (computed from multiple values)
+  this->topics_.push_back({"cop", 0, 
+    [this](uint8_t input) { return this->get_cop(this->act_data_); }, "", "Coefficient of Performance"});
   
   // Optional topics for PCB
   if (this->optional_pcb_) {

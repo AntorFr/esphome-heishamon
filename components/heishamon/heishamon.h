@@ -182,6 +182,14 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   float get_power(uint8_t input);
   float get_pump_flow(const std::vector<uint8_t> &data);
   
+  // Additional decoding functions for Phase 1 sensors
+  float get_dhw_power(uint8_t input);
+  float get_heat_delta(uint8_t input);
+  float get_cool_delta(uint8_t input);
+  float get_operating_hours(uint8_t input);
+  float get_cop(const std::vector<uint8_t> &data);
+  float get_zone_valve_pid(uint8_t input);
+  
   // Topics définis
   std::vector<HeishaTopic> topics_;
   std::vector<HeishaTopic> optional_topics_;

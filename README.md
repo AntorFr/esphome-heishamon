@@ -8,14 +8,24 @@ HeishaMon is a popular open-source project for monitoring and controlling Panaso
 
 ## Features
 
-- **Serial Communication**: Full protocol implementation compatible with original HeishaMon
-- **Sensor Support**: Temperature, power, frequency, and flow sensors
-- **Binary Sensors**: Heat pump state monitoring
-- **Climate Controls**: Zone thermostats for heating and cooling control
-- **Switch Controls**: Force DHW, defrost, holiday mode commands
-- **Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
-- **Platform Support**: ESP8266 and ESP32 with optimized configurations
-- **Home Assistant**: Native integration via ESPHome API
+- **📡 Serial Communication**: Full protocol implementation compatible with original HeishaMon
+- **🌡️ Advanced Sensors**: 30+ sensors including COP calculation, zone temperatures, and power monitoring
+- **🏠 Climate Controls**: Zone thermostats for heating and cooling control
+- **🔧 Switch Controls**: Force DHW, defrost, holiday mode commands
+- **👁️ Binary Sensors**: Heat pump state monitoring and system diagnostics
+- **🔇 Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
+- **⚡ Platform Support**: ESP8266 and ESP32 with optimized configurations
+- **🏡 Home Assistant**: Native integration via ESPHome API
+
+### 🆕 Phase 1 Advanced Features
+- **COP Monitoring**: Real-time coefficient of performance calculation
+- **Zone Sensors**: Individual zone water temperatures and valve control
+- **Power Separation**: DHW/Heat/Cool power consumption and production tracking
+- **Maintenance Tracking**: Operating hours for compressor and heaters
+- **Temperature Deltas**: System efficiency monitoring
+- **Holiday Settings**: Temperature shift monitoring during vacation mode
+
+See **[`docs/PHASE1_SENSORS.md`](docs/PHASE1_SENSORS.md)** for detailed sensor documentation.
 
 ## Quick Start
 
@@ -42,12 +52,16 @@ esphome-heishamon/
 │       ├── climate.py            # Climate/thermostat configuration
 │       ├── climate.h             # Climate header
 │       ├── climate.cpp           # Climate implementation
+│       ├── water_heater.py       # Water heater configuration
+│       ├── water_heater.h        # Water heater header
+│       ├── water_heater.cpp      # Water heater implementation
 │       ├── switch.py             # Switch configuration
 │       ├── switch.h              # Switch header
 │       └── switch.cpp            # Switch implementation
 ├── docs/
 │   ├── WIRING.md                # Hardware wiring diagrams
 │   ├── CLIMATE.md               # Climate/thermostat documentation
+│   ├── WATER_HEATER.md          # Water heater documentation
 │   └── DEBUGGING.md             # Troubleshooting guide
 ├── example-esp8266.yaml         # ESP8266 configuration example
 ├── example-esp32.yaml           # ESP32 configuration example
@@ -160,6 +174,17 @@ climate:
     zone_id: 1
     supports_heat: true
     supports_cool: false
+```
+
+### Water Heater (DHW)
+
+Domestic Hot Water control with temperature and mode management. See **[`docs/WATER_HEATER.md`](docs/WATER_HEATER.md)** for detailed configuration.
+
+```yaml
+water_heater:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Heat Pump Water Heater"
 ```
 
 ### Sensors

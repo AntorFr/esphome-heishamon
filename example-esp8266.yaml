@@ -99,6 +99,26 @@ sensor:
     topic: "operation_mode"
     name: "Operation Mode"
 
+  # PHASE 1: Essential advanced sensors (limited selection for ESP8266 memory)
+  # COP is very useful for efficiency monitoring
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "cop"
+    name: "Coefficient of Performance (COP)"
+    accuracy_decimals: 2
+    
+  # Zone 1 temperature (most common zone)
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z1_water_temp"
+    name: "Zone 1 Water Temperature"
+    
+  # Operating hours for maintenance
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "compressor_operating_hours"
+    name: "Compressor Operating Hours"
+
 # Climate components (Thermostats)
 climate:
   # Zone 1 Heating Thermostat
