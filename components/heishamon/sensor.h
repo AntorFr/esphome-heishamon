@@ -7,12 +7,8 @@
 namespace esphome {
 namespace heishamon {
 
-class HeishamonSensor : public Component, public sensor::Sensor {
+class HeishamonSensor : public sensor::Sensor {
  public:
-  void setup() override;
-  void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
-
   void set_parent(HeishamonComponent *parent) { this->parent_ = parent; }
   void set_topic(const std::string &topic) { this->topic_ = topic; }
 

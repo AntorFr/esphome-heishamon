@@ -18,7 +18,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonSensor = heishamon_ns.class_("HeishamonSensor", cg.Component, sensor.Sensor)
+HeishamonSensor = heishamon_ns.class_("HeishamonSensor", sensor.Sensor)
 
 # Available topics configuration
 HEISHA_TOPICS = {
@@ -81,7 +81,6 @@ CONFIG_SCHEMA = cv.Schema(
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
     await sensor.register_sensor(var, config)
 
     parent = await cg.get_variable(config["heishamon_id"])
