@@ -7,7 +7,7 @@
 namespace esphome {
 namespace heishamon {
 
-class HeishamonSwitch : public switch_::Switch, public Component {
+class HeishamonSwitch : public Component, public switch_::Switch {
  public:
   void setup() override;
   void dump_config() override;

@@ -6,7 +6,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", binary_sensor.BinarySensor, cg.Component)
+HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", cg.Component, binary_sensor.BinarySensor)
 
 # Topics for binary sensors
 HEISHA_BINARY_TOPICS = {

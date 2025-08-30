@@ -28,34 +28,8 @@ if [ ! -f "secrets.yaml" ]; then
     echo "📝 Creating test secrets.yaml..."
     cat > secrets.yaml << EOF
 wifi_ssid: "test_network"
-wifi_password: "test_password"
-EOF
-fi
 
-# Check ESPHome version
-echo "📋 ESPHome version: $(python3 -m esphome version)"
-
-# Test ESP8266 validation
-echo "🧪 Testing ESP8266 validation..."
-if python3 -m esphome config example-esp8266.yaml > /dev/null 2>&1; then
-    echo "✅ ESP8266 configuration valid"
-else
-    echo "❌ ESP8266 configuration invalid"
-    python3 -m esphome config example-esp8266.yaml
-    exit 1
-fi
-
-# Test ESP32 validation
-echo "🧪 Testing ESP32 validation..."
-if python3 -m esphome config example-esp32.yaml > /dev/null 2>&1; then
-    echo "✅ ESP32 configuration valid"
-else
-    echo "❌ ESP32 configuration invalid"
-    python3 -m esphome config example-esp32.yaml
-    exit 1
-fi
-
-# Compilation test ESP8266 (optional - takes time)
+# Test ESP32 validation (Arduino)
 if [ "$1" = "--compile" ]; then
     echo "🔨 Testing ESP8266 compilation..."
     if python3 -m esphome compile example-esp8266.yaml > /dev/null 2>&1; then

@@ -7,7 +7,7 @@
 namespace esphome {
 namespace heishamon {
 
-class HeishamonNumber : public number::Number, public Component {
+class HeishamonNumber : public Component, public number::Number {
  public:
   void setup() override;
   void dump_config() override;

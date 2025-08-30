@@ -7,7 +7,7 @@
 namespace esphome {
 namespace heishamon {
 
-class HeishamonSelect : public select::Select, public Component {
+class HeishamonSelect : public Component, public select::Select {
  public:
   void setup() override;
   void dump_config() override;

@@ -6,7 +6,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonSelect = heishamon_ns.class_("HeishamonSelect", select.Select, cg.Component)
+HeishamonSelect = heishamon_ns.class_("HeishamonSelect", cg.Component, select.Select)
 
 # Available select entities based on HA module analysis
 HEISHA_SELECT_OPTIONS = {

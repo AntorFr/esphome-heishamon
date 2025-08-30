@@ -6,7 +6,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonSwitch = heishamon_ns.class_("HeishamonSwitch", switch.Switch, cg.Component)
+HeishamonSwitch = heishamon_ns.class_("HeishamonSwitch", cg.Component, switch.Switch)
 
 # Available commands with their parameters
 HEISHA_COMMANDS = {

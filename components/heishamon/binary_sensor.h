@@ -7,7 +7,7 @@
 namespace esphome {
 namespace heishamon {
 
-class HeishamonBinarySensor : public binary_sensor::BinarySensor, public Component {
+class HeishamonBinarySensor : public Component, public binary_sensor::BinarySensor {
  public:
   void setup() override;
   void dump_config() override;

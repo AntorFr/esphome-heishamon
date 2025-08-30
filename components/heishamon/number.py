@@ -6,7 +6,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonNumber = heishamon_ns.class_("HeishamonNumber", number.Number, cg.Component)
+HeishamonNumber = heishamon_ns.class_("HeishamonNumber", cg.Component, number.Number)
 
 # Available number entities based on HeishaMon protocol analysis
 HEISHA_NUMBER_CONFIGS = {

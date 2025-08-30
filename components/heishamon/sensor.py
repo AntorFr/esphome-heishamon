@@ -18,7 +18,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonSensor = heishamon_ns.class_("HeishamonSensor", sensor.Sensor, cg.Component)
+HeishamonSensor = heishamon_ns.class_("HeishamonSensor", cg.Component, sensor.Sensor)
 
 # Available topics configuration
 HEISHA_TOPICS = {
