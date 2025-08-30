@@ -6,7 +6,7 @@ from . import HeishamonComponent, heishamon_ns
 
 DEPENDENCIES = ["heishamon"]
 
-HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", cg.Component, binary_sensor.BinarySensor)
+HeishamonBinarySensor = heishamon_ns.class_("HeishamonBinarySensor", binary_sensor.BinarySensor)
 
 # Topics for binary sensors
 HEISHA_BINARY_TOPICS = {
@@ -47,9 +47,14 @@ CONFIG_SCHEMA = cv.Schema(
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await cg.register_component(var, config)
     await binary_sensor.register_binary_sensor(var, config)
 
     parent = await cg.get_variable(config["heishamon_id"])
     cg.add(var.set_parent(parent))
     cg.add(var.set_topic(config["topic"]))
+    
+    # Register the callback with the parent
+    cg.add(parent.register_binary_sensor_callback(
+        config["topic"],
+        cg.lambda_(f"[=](bool value) {{ {var}->publish_state(value); }}")
+    ))
