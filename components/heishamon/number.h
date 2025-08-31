@@ -1,6 +1,10 @@
-#pragma once
+#pragmanamespace heishamon {
 
-#include "esphome/core/component.h"
+class HeishamonNumber : public number::Number {
+ public:
+  
+  void set_parent(HeishamonComponent *parent) { parent_ = parent; }
+  void set_number_type(const std::string &type) { number_type_ = type; }clude "esphome/core/component.h"
 #include "esphome/components/number/number.h"
 #include "heishamon.h"
 
@@ -19,8 +23,8 @@ class HeishamonNumber : public Component, public number::Number {
   void set_min_value(float min_value) { this->traits.set_min_value(min_value); }
   void set_max_value(float max_value) { this->traits.set_max_value(max_value); }
   void set_step(float step) { this->traits.set_step(step); }
-  void set_unit_of_measurement(const std::string &unit) { this->traits.set_unit_of_measurement(unit); }
-  void set_device_class(const std::string &device_class) { this->traits.set_device_class(device_class); }
+  void set_unit_of_measurement(const std::string &unit) { this->traits.set_unit_of_measurement(unit.c_str()); }
+  void set_device_class(const std::string &device_class) { this->traits.set_device_class(device_class.c_str()); }
 
  protected:
   void control(float value) override;

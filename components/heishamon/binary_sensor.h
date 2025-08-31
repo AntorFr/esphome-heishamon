@@ -16,7 +16,6 @@ class HeishamonBinarySensor : public binary_sensor::BinarySensor {
   HeishamonComponent *parent_;
   std::string topic_;
 };
-};
 
 }  // namespace heishamon
 }  // namespace esphome

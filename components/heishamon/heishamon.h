@@ -15,8 +15,6 @@ class HeishaMonClimate;
 class HeishamonNumber;
 class HeishamonWaterHeater;
 
-static const char *const TAG = "heishamon";
-
 // Constants from HeishaMon
 #define DATASIZE 203
 #define OPTDATASIZE 20
@@ -70,6 +68,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Command sending functions
   void send_command(const std::string &command);
   void send_command(const std::string &command, const std::string &value);
+  bool send_command(const std::vector<uint8_t> &command);
   void create_command(const std::string &command, uint8_t value);
 
   // Climate control functions

@@ -9,7 +9,7 @@ namespace heishamon {
 
 class HeishaMonClimate : public climate::Climate, public Component {
  public:
-  void set_parent(HeishaMonComponent *parent) { parent_ = parent; }
+  void set_parent(HeishamonComponent *parent) { parent_ = parent; }
   void set_zone_id(uint8_t zone_id) { zone_id_ = zone_id; }
   void set_supports_heat(bool supports_heat) { supports_heat_ = supports_heat; }
   void set_supports_cool(bool supports_cool) { supports_cool_ = supports_cool; }
@@ -25,7 +25,7 @@ class HeishaMonClimate : public climate::Climate, public Component {
   void update_from_heishamon();
 
  protected:
-  HeishaMonComponent *parent_{nullptr};
+  HeishamonComponent *parent_{nullptr};
   uint8_t zone_id_{1};
   bool supports_heat_{true};
   bool supports_cool_{false};

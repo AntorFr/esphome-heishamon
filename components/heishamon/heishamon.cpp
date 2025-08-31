@@ -85,7 +85,6 @@ void HeishamonComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Update interval: %u ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Listen only: %s", YESNO(this->listen_only_));
   ESP_LOGCONFIG(TAG, "  Optional PCB: %s", YESNO(this->optional_pcb_));
-  LOG_UPDATE_INTERVAL(this);
 }
 
 bool HeishamonComponent::read_serial() {
@@ -293,8 +292,8 @@ void HeishamonComponent::push_command_buffer(const std::vector<uint8_t> &command
   }
   
   CommandBuffer &cmd = this->command_buffer_[this->cmd_end_];
-  cmd.length = std::min(command.size(), sizeof(cmd.data));
-  std::copy(command.begin(), command.begin() + cmd.length, cmd.data);
+  cmd.size = std::min(command.size(), sizeof(cmd.data));
+  std::copy(command.begin(), command.begin() + cmd.size, cmd.data);
   
   this->cmd_end_ = (this->cmd_end_ + 1) % MAXCOMMANDSINBUFFER;
   this->cmd_count_++;
@@ -304,7 +303,7 @@ void HeishamonComponent::pop_command_buffer() {
   if (this->cmd_count_ == 0) return;
   
   const CommandBuffer &cmd = this->command_buffer_[this->cmd_start_];
-  std::vector<uint8_t> command(cmd.data, cmd.data + cmd.length);
+  std::vector<uint8_t> command(cmd.data, cmd.data + cmd.size);
   
   // Send command
   uint8_t checksum = this->calc_checksum(command);
@@ -318,7 +317,7 @@ void HeishamonComponent::pop_command_buffer() {
   this->cmd_count_--;
 }
 
-void HeishamonComponent::register_sensor(const std::string &topic, std::function<void(float)> callback) {
+void HeishamonComponent::register_sensor_callback(const std::string &topic, std::function<void(float)> callback) {
   this->sensor_callbacks_[topic] = callback;
 }
 

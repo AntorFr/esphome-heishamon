@@ -53,14 +53,18 @@ CONFIG_SCHEMA = cv.Schema(
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    await select.register_select(var, config)
+    
+    # Get options for this select type
+    select_config = HEISHA_SELECT_OPTIONS[config["type"]]
+    options = select_config["options"]
+    
+    await select.register_select(var, config, options=options)
 
     parent = await cg.get_variable(config["heishamon_id"])
     cg.add(var.set_parent(parent))
     cg.add(var.set_select_type(config["type"]))
     
     # Configure options based on select type
-    select_config = HEISHA_SELECT_OPTIONS[config["type"]]
     cg.add(var.set_command(select_config["command"]))
     cg.add(var.set_options(select_config["options"]))
     cg.add(var.set_initial_option(select_config["default"]))

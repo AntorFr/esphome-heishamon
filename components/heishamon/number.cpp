@@ -6,28 +6,6 @@ namespace heishamon {
 
 static const char *const TAG = "heishamon.number";
 
-void HeishamonNumber::setup() {
-  // Register with parent component
-  this->parent_->register_number(this);
-  
-  // Restore last state if available
-  auto restore = this->get_initial_state_with_restore_mode();
-  if (restore.has_value()) {
-    this->publish_state(*restore);
-  }
-}
-
-void HeishamonNumber::dump_config() {
-  ESP_LOGCONFIG(TAG, "HeishaMon Number '%s':", this->get_name().c_str());
-  ESP_LOGCONFIG(TAG, "  Type: %s", this->number_type_.c_str());
-  ESP_LOGCONFIG(TAG, "  Command: %s", this->command_.c_str());
-  ESP_LOGCONFIG(TAG, "  Range: %.1f - %.1f", this->traits.get_min_value(), this->traits.get_max_value());
-  ESP_LOGCONFIG(TAG, "  Step: %.1f", this->traits.get_step());
-  if (!this->traits.get_unit_of_measurement().empty()) {
-    ESP_LOGCONFIG(TAG, "  Unit: %s", this->traits.get_unit_of_measurement().c_str());
-  }
-}
-
 void HeishamonNumber::control(float value) {
   // Validate range
   if (value < this->traits.get_min_value() || value > this->traits.get_max_value()) {

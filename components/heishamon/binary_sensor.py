@@ -56,5 +56,5 @@ async def to_code(config):
     # Register the callback with the parent
     cg.add(parent.register_binary_sensor_callback(
         config["topic"],
-        cg.lambda_(f"[=](bool value) {{ {var}->publish_state(value); }}")
+        cg.RawExpression(f"[=](bool value) {{ {var}->publish_state(value); }}")
     ))

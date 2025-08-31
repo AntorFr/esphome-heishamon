@@ -70,6 +70,16 @@ else
 fi
 rm -f example-esp32-espidf.yaml example-esp32-espidf.yaml.bak
 
+# Test ESP32-S3 validation (ESP-IDF)
+echo "🧪 Testing ESP32-S3 validation (ESP-IDF)..."
+if python3 -m esphome config example-esp32s3-espidf.yaml > /dev/null 2>&1; then
+    echo "✅ ESP32-S3 configuration valid (ESP-IDF)"
+else
+    echo "❌ ESP32-S3 configuration invalid (ESP-IDF)"
+    python3 -m esphome config example-esp32s3-espidf.yaml
+    exit 1
+fi
+
 # Compilation test ESP8266/ESP32/ESP-IDF (optional - takes time)
 if [ "$1" = "--compile" ]; then
     echo "🔨 Testing ESP8266 compilation..."
