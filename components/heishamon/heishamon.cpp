@@ -47,6 +47,15 @@ void HeishamonComponent::setup() {
 void HeishamonComponent::loop() {
   uint32_t now = millis();
   
+  // Debug: Log periodically to confirm loop is running
+  static uint32_t last_debug = 0;
+  if ((now - last_debug) > 10000) { // Every 10 seconds
+    last_debug = now;
+    ESP_LOGD(TAG, "HeishaMon loop running - total_reads: %u, bad_headers: %u, bad_crc: %u", 
+             this->total_reads_, this->bad_header_reads_, this->bad_crc_reads_);
+    ESP_LOGD(TAG, "UART available bytes: %d, sending: %s", this->available(), YESNO(this->sending_));
+  }
+  
   // Check timeouts
   if (this->sending_ && (now - this->send_command_read_time_) > SERIALTIMEOUT) {
     ESP_LOGW(TAG, "Command timeout, resetting send state");
@@ -56,6 +65,7 @@ void HeishamonComponent::loop() {
   
   // Read serial data
   if (this->available() > 0) {
+    ESP_LOGD(TAG, "UART data available: %d bytes", this->available());
     this->read_serial();
   }
   
@@ -88,9 +98,13 @@ void HeishamonComponent::dump_config() {
 }
 
 bool HeishamonComponent::read_serial() {
+  ESP_LOGD(TAG, "read_serial() called - available bytes: %d", this->available());
+  
   while (this->available() && this->data_buffer_.size() < MAXDATASIZE) {
     uint8_t byte;
     this->read_byte(&byte);
+    
+    ESP_LOGV(TAG, "Read byte: 0x%02X", byte);
     
     // First byte = start of new packet
     if (this->data_buffer_.empty()) {
@@ -102,7 +116,7 @@ bool HeishamonComponent::read_serial() {
         this->bad_header_reads_++;
         return false;
       }
-      ESP_LOGV(TAG, "Found valid header: 0x%02X", byte);
+      ESP_LOGD(TAG, "Found valid header: 0x%02X", byte);
     }
     
     this->data_buffer_.push_back(byte);
