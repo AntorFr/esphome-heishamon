@@ -1,3 +1,4 @@
+#ifdef USE_SELECT
 #include "select.h"
 #include "esphome/core/log.h"
 
@@ -99,3 +100,4 @@ std::string HeishamonSelect::cooling_mode_to_command(const std::string &option) 
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

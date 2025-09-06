@@ -1,4 +1,5 @@
 #pragma once
+#ifdef USE_SWITCH
 
 #include "esphome/core/component.h"
 #include "esphome/components/switch/switch.h"
@@ -27,3 +28,4 @@ class HeishamonSwitch : public Component, public switch_::Switch {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

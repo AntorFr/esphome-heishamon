@@ -1,0 +1,73 @@
+substitutions:
+  device_name: esp32s3-minimal
+  friendly_name: HeishaMon Minimal Test
+  area: "Test"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  area: ${area}  
+  comment: HeishaMon v5 - Sensor Only Test
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+# Enable Home Assistant API
+api:
+
+ota:
+  platform: esphome
+  password: "test_password"
+
+logger:
+  level: DEBUG
+
+# Minimal WiFi for testing
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+#######################################
+# Device specific Config Begins Below #
+#######################################
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ heishamon ]
+
+uart:
+  id: heisha_uart
+  tx_pin: GPIO17     
+  rx_pin: GPIO18     
+  baud_rate: 9600
+  parity: EVEN
+  stop_bits: 1
+
+heishamon:
+  id: heisha_main
+  uart_id: heisha_uart
+  update_interval: 30s
+  listen_only: true
+  optional_pcb: false
+
+# Only temperature sensors - no climate, binary_sensor, number, etc.
+sensor:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "dhw_temp"
+    name: "DHW Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "outside_temp"
+    name: "Outside Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "main_inlet_temp"
+    name: "Main Inlet Temperature"

@@ -1,3 +1,4 @@
+#ifdef USE_WATER_HEATER
 #include "water_heater.h"
 #include "heishamon.h"
 #include "esphome/core/log.h"
@@ -182,3 +183,4 @@ void HeishamonWaterHeater::send_dhw_mode_() {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

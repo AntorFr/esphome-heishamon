@@ -1,3 +1,4 @@
+#ifdef USE_CLIMATE
 #include "climate.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
@@ -257,3 +258,4 @@ climate::ClimateMode HeishaMonClimate::get_current_hvac_mode() const {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

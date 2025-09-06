@@ -1,0 +1,77 @@
+substitutions:
+  device_name: esp32s3-sensors-and-climate
+  friendly_name: HeishaMon Sensors + Climate Test
+  area: "Test"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  area: ${area}  
+  comment: HeishaMon v5 - Sensors + Climate Test
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+
+# Enable Home Assistant API
+api:
+
+ota:
+  platform: esphome
+  password: "test_password"
+
+logger:
+  level: DEBUG
+
+# Minimal WiFi for testing
+wifi:
+  ssid: "test_ssid"
+  password: "test_password"
+
+#######################################
+# Device specific Config Begins Below #
+#######################################
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ heishamon ]
+
+uart:
+  id: heisha_uart
+  tx_pin: GPIO17     
+  rx_pin: GPIO18     
+  baud_rate: 9600
+  parity: EVEN
+  stop_bits: 1
+
+heishamon:
+  id: heisha_main
+  uart_id: heisha_uart
+  update_interval: 30s
+  listen_only: true
+  optional_pcb: false
+
+# Temperature sensors
+sensor:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "dhw_temp"
+    name: "DHW Temperature"
+    
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "outside_temp"
+    name: "Outside Temperature"
+
+# Climate configuration for Zone heating
+climate:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Heating"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false

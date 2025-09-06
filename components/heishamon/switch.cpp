@@ -1,3 +1,4 @@
+#ifdef USE_SWITCH
 #include "switch.h"
 #include "esphome/core/log.h"
 
@@ -115,3 +116,4 @@ std::vector<uint8_t> HeishamonSwitch::create_command(bool state) {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

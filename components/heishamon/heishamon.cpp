@@ -263,17 +263,21 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
   }
   
   // Update all registered climate components
+#ifdef USE_CLIMATE
   for (auto *climate : this->climate_components_) {
     climate->update_from_heishamon();
   }
+#endif
   
   // Update all registered water heater components
+#ifdef USE_WATER_HEATER
   for (auto *water_heater : this->water_heater_components_) {
     water_heater->update_current_temperature(this->dhw_current_temp_);
     water_heater->update_target_temperature(this->dhw_target_temp_);
     water_heater->update_dhw_state(this->dhw_heating_state_);
     water_heater->update_dhw_mode(this->dhw_mode_);
   }
+#endif
 }
 
 void HeishamonComponent::decode_optional_data(const std::vector<uint8_t> &data) {
@@ -667,9 +671,11 @@ void HeishamonComponent::init_topics() {
 }
 
 // Climate control implementation
+#ifdef USE_CLIMATE
 void HeishamonComponent::register_climate_component(HeishaMonClimate *climate) {
   this->climate_components_.push_back(climate);
 }
+#endif
 
 // Heat pump mode control
 void HeishamonComponent::set_heat_mode_enabled(bool enabled) {
@@ -818,11 +824,14 @@ bool HeishamonComponent::get_zone2_cool_enabled() const {
 }
 
 // Number component support
+#ifdef USE_NUMBER
 void HeishamonComponent::register_number(HeishamonNumber *number) {
   this->number_components_.push_back(number);
 }
+#endif
 
 // Water Heater component registration and support methods
+#ifdef USE_WATER_HEATER
 void HeishamonComponent::register_water_heater(HeishamonWaterHeater *water_heater) {
   this->water_heater_components_.push_back(water_heater);
   water_heater->set_parent(this);
@@ -836,7 +845,9 @@ float HeishamonComponent::get_dhw_current_temperature() const {
 float HeishamonComponent::get_dhw_target_temperature() const {
   return this->dhw_target_temp_;
 }
+#endif
 
+#ifdef USE_WATER_HEATER
 bool HeishamonComponent::get_dhw_heating_state() const {
   return this->dhw_heating_state_;
 }
@@ -844,6 +855,7 @@ bool HeishamonComponent::get_dhw_heating_state() const {
 int HeishamonComponent::get_dhw_mode() const {
   return this->dhw_mode_;
 }
+#endif
 
 // Missing method implementations for linkage
 void HeishamonComponent::register_binary_sensor_callback(const std::string &topic, std::function<void(bool)> callback) {

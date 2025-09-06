@@ -1,4 +1,5 @@
 #pragma once
+#ifdef USE_SELECT
 
 #include "esphome/core/component.h"
 #include "esphome/components/select/select.h"
@@ -40,3 +41,4 @@ class HeishamonSelect : public Component, public select::Select {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

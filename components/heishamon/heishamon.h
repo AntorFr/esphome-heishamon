@@ -2,20 +2,29 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
-#include "esphome/components/climate/climate.h"
 #include "esphome/core/log.h"
 #include <vector>
 #include <map>
 #include <string>
 
+// Conditional includes for optional components
+#ifdef USE_CLIMATE
+#include "esphome/components/climate/climate.h"
+#endif
+
 namespace esphome {
 namespace heishamon {
 
 // Forward declarations
+#ifdef USE_CLIMATE
 class HeishaMonClimate;
+#endif
+#ifdef USE_NUMBER
 class HeishamonNumber;
+#endif
+#ifdef USE_WATER_HEATER
 class HeishamonWaterHeater;
-class HeishamonWaterHeater;
+#endif
 
 // Constants from HeishaMon
 #define DATASIZE 203
@@ -104,18 +113,22 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   bool get_zone2_heat_enabled() const;
   bool get_zone2_cool_enabled() const;
   
-  // Climate component registration
+  // Optional component registration - only defined if components are used
+#ifdef USE_CLIMATE
   void register_climate_component(class HeishaMonClimate *climate);
+#endif
   
-  // Number component registration and support
+#ifdef USE_NUMBER
   void register_number(class HeishamonNumber *number);
+#endif
   
-  // Water Heater component registration and support
+#ifdef USE_WATER_HEATER
   void register_water_heater(HeishamonWaterHeater *water_heater);
   float get_dhw_current_temperature() const;
   float get_dhw_target_temperature() const;
   bool get_dhw_heating_state() const;
   int get_dhw_mode() const;
+#endif
 
  protected:
   uint32_t update_interval_{30000};
@@ -145,14 +158,18 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   std::map<std::string, std::function<void(float)>> sensor_callbacks_;
   std::map<std::string, std::function<void(bool)>> binary_sensor_callbacks_;
   
-  // Climate components
+  // Optional components - only defined if the component is used
+#ifdef USE_CLIMATE
   std::vector<class HeishaMonClimate *> climate_components_;
+#endif
   
-  // Number components
+#ifdef USE_NUMBER
   std::vector<class HeishamonNumber *> number_components_;
+#endif
   
-  // Water Heater components
+#ifdef USE_WATER_HEATER
   std::vector<HeishamonWaterHeater *> water_heater_components_;
+#endif
   
   // Climate state tracking
   bool heat_mode_enabled_{false};

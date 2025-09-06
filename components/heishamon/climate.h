@@ -1,4 +1,5 @@
 #pragma once
+#ifdef USE_CLIMATE
 
 #include "esphome/core/component.h"
 #include "esphome/components/climate/climate.h"
@@ -52,3 +53,4 @@ class HeishaMonClimate : public climate::Climate, public Component {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif
