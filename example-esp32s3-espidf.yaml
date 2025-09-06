@@ -50,8 +50,8 @@ external_components:
 
 uart:
   id: heisha_uart
-  tx_pin: GPIO17     # TX pin for ESP32
-  rx_pin: GPIO18     # RX pin for ESP32
+  tx_pin: GPIO15     # TX pin for ESP32 (correct HeishaMon pin)
+  rx_pin: GPIO13     # RX pin for ESP32 (correct HeishaMon pin)
   baud_rate: 9600
   parity: EVEN
   stop_bits: 1
