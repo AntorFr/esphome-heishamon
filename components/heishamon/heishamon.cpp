@@ -102,6 +102,7 @@ bool HeishamonComponent::read_serial() {
         this->bad_header_reads_++;
         return false;
       }
+      ESP_LOGV(TAG, "Found valid header: 0x%02X", byte);
     }
     
     this->data_buffer_.push_back(byte);
@@ -121,19 +122,23 @@ bool HeishamonComponent::read_serial() {
           return false;
         }
         
-        ESP_LOGD(TAG, "Received valid packet, size: %d", this->data_buffer_.size());
+        ESP_LOGD(TAG, "Received valid packet, size: %d, header: 0x%02X", 
+                 this->data_buffer_.size(), this->data_buffer_[0]);
         this->good_reads_++;
         
         // Decode according to data type
         if (this->data_buffer_.size() == DATASIZE) {
           if (this->data_buffer_[3] == 0x10) {
+            ESP_LOGD(TAG, "Decoding heatpump data packet (0x10)");
             this->decode_heatpump_data(this->data_buffer_);
           } else if (this->data_buffer_[3] == 0x21) {
             this->extra_data_available_ = true;
+            ESP_LOGD(TAG, "Received extra data packet (0x21)");
             // Copy to extra data buffer
             std::copy(this->data_buffer_.begin(), this->data_buffer_.end(), this->act_data_extra_.begin());
           }
         } else if (this->data_buffer_.size() == OPTDATASIZE) {
+          ESP_LOGD(TAG, "Decoding optional data packet");
           this->decode_optional_data(this->data_buffer_);
         }
         
@@ -191,10 +196,18 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
   // Copy to current buffer
   std::copy(data.begin(), data.end(), this->act_data_.begin());
   
+  ESP_LOGD(TAG, "Decoding heatpump data, %d topics configured", this->topics_.size());
+  
   // Decode all configured topics
   for (const auto &topic : this->topics_) {
     if (topic.byte_index < data.size()) {
       float value = topic.decode_func(data[topic.byte_index]);
+      
+      // Special debug for DHW temperature
+      if (topic.name == "dhw_temp") {
+        ESP_LOGD(TAG, "DHW Temperature: byte_index=%d, raw_byte=0x%02X, decoded_value=%.1f", 
+                 topic.byte_index, data[topic.byte_index], value);
+      }
       
       // Update internal temperature values for climate components
       if (topic.name == "z1_temp") {
@@ -211,6 +224,7 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
         this->zone2_cool_target_temp_ = value;
       } else if (topic.name == "dhw_temp") {
         this->dhw_current_temp_ = value;
+        ESP_LOGD(TAG, "DHW Temperature updated internally: %.1f°C", value);
       } else if (topic.name == "dhw_target_temp") {
         this->dhw_target_temp_ = value;
       } else if (topic.name == "dhw_heating") {
@@ -234,8 +248,17 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
       // Call callback if registered
       auto it = this->sensor_callbacks_.find(topic.name);
       if (it != this->sensor_callbacks_.end()) {
+        ESP_LOGD(TAG, "Calling sensor callback for %s with value %.1f", topic.name.c_str(), value);
         it->second(value);
+      } else {
+        // Debug: mention if no callback is registered
+        if (topic.name == "dhw_temp") {
+          ESP_LOGW(TAG, "No callback registered for dhw_temp sensor!");
+        }
       }
+    } else {
+      ESP_LOGW(TAG, "Topic %s: byte_index %d is out of bounds (data size: %d)", 
+               topic.name.c_str(), topic.byte_index, data.size());
     }
   }
   
@@ -317,8 +340,10 @@ void HeishamonComponent::pop_command_buffer() {
   this->cmd_count_--;
 }
 
-void HeishamonComponent::register_sensor_callback(const std::string &topic, std::function<void(float)> callback) {
-  this->sensor_callbacks_[topic] = callback;
+void HeishamonComponent::register_sensor_callback(const std::string &topic, std::function<void(float)> &&callback) {
+  ESP_LOGD(TAG, "Registering sensor callback for topic: %s", topic.c_str());
+  this->sensor_callbacks_[topic] = std::move(callback);
+  ESP_LOGD(TAG, "Total sensor callbacks registered: %d", this->sensor_callbacks_.size());
 }
 
 bool HeishamonComponent::send_command(const std::vector<uint8_t> &command) {
@@ -512,6 +537,8 @@ void HeishamonComponent::init_topics() {
   // Initialize the most important topics (selection of critical ones to save memory)
   this->topics_.clear();
   
+  ESP_LOGD(TAG, "Initializing topics...");
+  
   // Basic heat pump topics
   this->topics_.push_back({"heatpump_state", 4, 
     [this](uint8_t input) { return this->get_bit_7_and_8(input); }, "", "Heat pump state"});
@@ -527,6 +554,7 @@ void HeishamonComponent::init_topics() {
   
   this->topics_.push_back({"dhw_temp", 141, 
     [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW temperature"});
+  ESP_LOGD(TAG, "DHW Temperature topic initialized at byte_index 141");
   
   this->topics_.push_back({"dhw_target_temp", 42, 
     [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW target temperature"});

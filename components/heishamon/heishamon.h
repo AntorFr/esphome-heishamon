@@ -64,7 +64,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   void set_optional_pcb(bool optional_pcb) { this->optional_pcb_ = optional_pcb; }
 
   // Public functions for sensors
-  void register_sensor_callback(const std::string &topic, std::function<void(float)> callback);
+  void register_sensor_callback(const std::string &topic, std::function<void(float)> &&callback);
   void register_binary_sensor_callback(const std::string &topic, std::function<void(bool)> callback);
 
   // Command sending functions
