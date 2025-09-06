@@ -14,6 +14,7 @@ HEISHA_NUMBER_CONFIGS = {
     "z1_heat_target_temp": {
         "name": "Zone 1 Heat Target Temperature",
         "command": "SetZ1HeatTargetTemp",
+        "read_topic": "z1_heat_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
         "step": 0.5,
@@ -23,6 +24,7 @@ HEISHA_NUMBER_CONFIGS = {
     "z2_heat_target_temp": {
         "name": "Zone 2 Heat Target Temperature", 
         "command": "SetZ2HeatTargetTemp",
+        "read_topic": "z2_heat_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
         "step": 0.5,
@@ -32,6 +34,7 @@ HEISHA_NUMBER_CONFIGS = {
     "z1_cool_target_temp": {
         "name": "Zone 1 Cool Target Temperature",
         "command": "SetZ1CoolTargetTemp", 
+        "read_topic": "z1_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
         "step": 0.5,
@@ -41,6 +44,7 @@ HEISHA_NUMBER_CONFIGS = {
     "z2_cool_target_temp": {
         "name": "Zone 2 Cool Target Temperature",
         "command": "SetZ2CoolTargetTemp",
+        "read_topic": "z2_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0, 
         "step": 0.5,
@@ -50,9 +54,20 @@ HEISHA_NUMBER_CONFIGS = {
     "dhw_target_temp": {
         "name": "DHW Target Temperature",
         "command": "SetDHWTargetTemp",
+        "read_topic": "dhw_target_temp",  # Topic to read current value (exists!)
         "min_value": 40.0,
         "max_value": 65.0,
         "step": 1.0,
+        "unit": "°C",
+        "device_class": "temperature"
+    },
+    "main_target_temp": {
+        "name": "Main Target Temperature", 
+        "command": "SetMainTargetTemp",
+        "read_topic": "main_target_temp",  # Topic to read current value (exists!)
+        "min_value": 15.0,
+        "max_value": 30.0,
+        "step": 0.5,
         "unit": "°C",
         "device_class": "temperature"
     },
@@ -190,6 +205,10 @@ async def to_code(config):
     # Configure number based on type
     number_config = HEISHA_NUMBER_CONFIGS[config["type"]]
     cg.add(var.set_command(number_config["command"]))
+    
+    # Set read topic if available for passive value display
+    if "read_topic" in number_config:
+        cg.add(var.set_read_topic(number_config["read_topic"]))
     
     # Use provided values or defaults from config
     min_val = config.get("min_value", number_config["min_value"])

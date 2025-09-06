@@ -8,6 +8,18 @@ namespace heishamon {
 
 static const char *const TAG = "heishamon.number";
 
+void HeishamonNumber::setup() {
+  // Register callback to receive current values if read_topic is set
+  if (!this->read_topic_.empty() && this->parent_) {
+    ESP_LOGD(TAG, "Registering number %s for topic %s", this->get_name().c_str(), this->read_topic_.c_str());
+    this->parent_->register_sensor_callback(this->read_topic_, [this](float value) {
+      // Only update the displayed value, don't trigger control
+      ESP_LOGD(TAG, "Received value %.1f for number %s", value, this->get_name().c_str());
+      this->publish_state(value);
+    });
+  }
+}
+
 void HeishamonNumber::control(float value) {
   // Validate range
   if (value < this->traits.get_min_value() || value > this->traits.get_max_value()) {
