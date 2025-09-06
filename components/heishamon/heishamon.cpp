@@ -256,9 +256,12 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
     if (topic.byte_index < data.size()) {
       float value = topic.decode_func(data[topic.byte_index]);
       
-      // Special debug for DHW temperature
+      // Special debug for DHW temperature and heat pump state
       if (topic.name == "dhw_temp") {
         ESP_LOGD(TAG, "DHW Temperature: byte_index=%d, raw_byte=0x%02X, decoded_value=%.1f", 
+                 topic.byte_index, data[topic.byte_index], value);
+      } else if (topic.name == "heatpump_state") {
+        ESP_LOGD(TAG, "Heat Pump State: byte_index=%d, raw_byte=0x%02X, decoded_value=%.1f", 
                  topic.byte_index, data[topic.byte_index], value);
       }
       
@@ -298,15 +301,25 @@ void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) 
         this->zone2_cool_enabled_ = (zone_state & 0x02) != 0;
       }
       
-      // Call callback if registered
-      auto it = this->sensor_callbacks_.find(topic.name);
-      if (it != this->sensor_callbacks_.end()) {
-        ESP_LOGD(TAG, "Calling sensor callback for %s with value %.1f", topic.name.c_str(), value);
-        it->second(value);
+      // Call callback if registered - check if it's a binary sensor first
+      auto binary_it = this->binary_sensor_callbacks_.find(topic.name);
+      if (binary_it != this->binary_sensor_callbacks_.end()) {
+        // This is a binary sensor - convert float value to boolean
+        bool bool_value = (value > 0.5f);  // Convert float to bool (> 0.5 = true)
+        ESP_LOGD(TAG, "Calling binary sensor callback for %s with value %s (from %.1f)", 
+                 topic.name.c_str(), bool_value ? "true" : "false", value);
+        binary_it->second(bool_value);
       } else {
-        // Debug: mention if no callback is registered
-        if (topic.name == "dhw_temp") {
-          ESP_LOGW(TAG, "No callback registered for dhw_temp sensor!");
+        // Check for regular sensor callback
+        auto it = this->sensor_callbacks_.find(topic.name);
+        if (it != this->sensor_callbacks_.end()) {
+          ESP_LOGD(TAG, "Calling sensor callback for %s with value %.1f", topic.name.c_str(), value);
+          it->second(value);
+        } else {
+          // Debug: mention if no callback is registered
+          if (topic.name == "dhw_temp") {
+            ESP_LOGW(TAG, "No callback registered for dhw_temp sensor!");
+          }
         }
       }
     } else {
@@ -506,7 +519,10 @@ float HeishamonComponent::get_bit_5_and_6(uint8_t input) {
 }
 
 float HeishamonComponent::get_bit_7_and_8(uint8_t input) {
-  return (input & 0b11) - 1;
+  // For heat pump state: bits 7&8 (0-1) represent the state
+  // Original HeishaMon: 1 = On, 0 = Off
+  // Return raw bits value without subtracting 1
+  return (input & 0b11);
 }
 
 float HeishamonComponent::get_int_minus_1(uint8_t input) {
