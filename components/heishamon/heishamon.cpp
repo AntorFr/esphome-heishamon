@@ -79,12 +79,26 @@ void HeishamonComponent::loop() {
     this->last_run_time_ = now;
     
     if (!this->listen_only_) {
-      this->send_panasonic_query();
-      
-      // Send optional PCB query if enabled
-      if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
-        this->last_optional_pcb_time_ = now;
-        this->send_optional_pcb_query();
+      // Send initial query first time only
+      if (!this->initial_query_sent_) {
+        ESP_LOGI(TAG, "Sending initial query to heatpump");
+        this->send_initial_query();
+        this->initial_query_sent_ = true;
+      } else {
+        this->send_panasonic_query();
+        
+        // Send optional PCB query if enabled
+        if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
+          this->last_optional_pcb_time_ = now;
+          this->send_optional_pcb_query();
+        }
+      }
+    } else {
+      // In listen_only mode, we only receive data passively
+      static uint32_t last_listen_info = 0;
+      if ((now - last_listen_info) > 60000) { // Log every minute
+        last_listen_info = now;
+        ESP_LOGI(TAG, "Running in listen_only mode - monitoring heat pump communications passively");
       }
     }
   }
@@ -95,6 +109,11 @@ void HeishamonComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Update interval: %u ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Listen only: %s", YESNO(this->listen_only_));
   ESP_LOGCONFIG(TAG, "  Optional PCB: %s", YESNO(this->optional_pcb_));
+  if (this->listen_only_) {
+    ESP_LOGCONFIG(TAG, "  Mode: Passive monitoring (CN-NMODE) - no queries sent");
+  } else {
+    ESP_LOGCONFIG(TAG, "  Mode: Active communication (CN-CNT) - queries will be sent");
+  }
 }
 
 bool HeishamonComponent::read_serial() {
@@ -167,6 +186,26 @@ bool HeishamonComponent::read_serial() {
   }
   
   return false;
+}
+
+void HeishamonComponent::send_initial_query() {
+  if (this->sending_) {
+    ESP_LOGW(TAG, "Already sending, buffering initial query");
+    this->push_command_buffer(this->initial_query_);
+    return;
+  }
+  
+  ESP_LOGD(TAG, "Sending initial query");
+  
+  // Calculate and add checksum
+  std::vector<uint8_t> query_with_checksum = this->initial_query_;
+  uint8_t checksum = this->calc_checksum(this->initial_query_);
+  query_with_checksum.push_back(checksum);
+  
+  // Send
+  this->write_array(query_with_checksum);
+  this->sending_ = true;
+  this->send_command_read_time_ = millis();
 }
 
 void HeishamonComponent::send_panasonic_query() {

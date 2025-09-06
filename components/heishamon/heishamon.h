@@ -138,6 +138,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // État de communication
   bool sending_{false};
   bool extra_data_available_{false};
+  bool initial_query_sent_{false};
   uint32_t last_run_time_{0};
   uint32_t last_optional_pcb_time_{0};
   uint32_t send_command_read_time_{0};
@@ -203,6 +204,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Fonctions privées
   void init_topics();
   bool read_serial();
+  void send_initial_query();
   void send_panasonic_query();
   void send_optional_pcb_query();
   void decode_heatpump_data(const std::vector<uint8_t> &data);

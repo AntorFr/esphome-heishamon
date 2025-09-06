@@ -1,13 +1,13 @@
 substitutions:
-  device_name: esp32s3-heishamon-debug
-  friendly_name: Pompe à challeur Garage Debug
+  device_name: esp32s3-heishamon-active
+  friendly_name: Pompe à challeur Garage Active
   area: "Garage 1"
 
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   area: ${area}  
-  comment: HeishaMon v5 Debug
+  comment: HeishaMon v5 Active Mode (CN-CNT)
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -60,7 +60,7 @@ heishamon:
   id: heisha_main
   uart_id: heisha_uart
   update_interval: 30s
-  listen_only: true   # Mode passif pour CN-NMODE (écoute seulement)
+  listen_only: false  # Mode actif pour CN-CNT (envoie requêtes + commandes)
   optional_pcb: false
 
 # Temperature sensors
@@ -113,8 +113,41 @@ binary_sensor:
     name: "Heat Pump State"
     device_class: running
 
-# Relay configuration
+# Climate control (available only in active mode)
+climate:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Heat Pump Climate"
+
+# Numbers for temperature setpoints (available only in active mode)
+number:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "SetZ1HeatRequestTemperature"
+    name: "Zone 1 Heat Target"
+    min_value: 15
+    max_value: 30
+    step: 0.5
+    unit_of_measurement: "°C"
+    mode: box
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "SetDHWTemp"
+    name: "DHW Target Temperature"
+    min_value: 40
+    max_value: 75
+    step: 1
+    unit_of_measurement: "°C"
+    mode: box
+
+# Switches for heat pump control (available only in active mode)
 switch:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    command: "SetHeatpump"
+    name: "Heat Pump Power"
+
   - platform: gpio
     pin: GPIO21
     name: "Relay 1"
