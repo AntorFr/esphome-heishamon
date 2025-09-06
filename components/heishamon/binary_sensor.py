@@ -50,8 +50,6 @@ async def to_code(config):
     await binary_sensor.register_binary_sensor(var, config)
 
     parent = await cg.get_variable(config["heishamon_id"])
-    cg.add(var.set_parent(parent))
-    cg.add(var.set_topic(config["topic"]))
     
     # Register the callback with the parent
     cg.add(parent.register_binary_sensor_callback(

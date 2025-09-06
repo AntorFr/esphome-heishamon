@@ -1,4 +1,5 @@
 #include "number.h"
+#include "heishamon.h"
 #include "esphome/core/log.h"
 
 namespace esphome {

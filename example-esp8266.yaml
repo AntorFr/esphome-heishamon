@@ -137,7 +137,7 @@ climate:
     supports_heat: true
     supports_cool: false
     
-  # Water Heater (Essential for ESP8266) - Phase 4
+  # Water Heater (Essential for ESP8266) - Phase 4  
   - platform: heishamon
     type: water_heater
     heishamon_id: heisha_main

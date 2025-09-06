@@ -38,37 +38,37 @@ HEISHA_TOPICS = {
     "heat_power_production": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
     "heat_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
     "dhw_power_production": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
-    "dhw_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
-    "cool_power_production": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
-    "cool_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER},
+    "dhw_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER, "state_class": STATE_CLASS_MEASUREMENT},
+    "cool_power_production": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER, "state_class": STATE_CLASS_MEASUREMENT},
+    "cool_power_consumption": {"unit": UNIT_WATT, "device_class": DEVICE_CLASS_POWER, "state_class": STATE_CLASS_MEASUREMENT},
     
     # Temperature deltas
-    "heat_delta": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
-    "cool_delta": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
+    "heat_delta": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
+    "cool_delta": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
     
     # Zone temperatures
-    "z1_water_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
-    "z2_water_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
-    "room_thermostat_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
+    "z1_water_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
+    "z2_water_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
+    "room_thermostat_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
     
     # Operating hours
-    "compressor_operating_hours": {"unit": "h", "device_class": "duration"},
-    "room_heater_operating_hours": {"unit": "h", "device_class": "duration"},
-    "dhw_heater_operating_hours": {"unit": "h", "device_class": "duration"},
+    "compressor_operating_hours": {"unit": "h", "device_class": "duration", "state_class": STATE_CLASS_MEASUREMENT},
+    "room_heater_operating_hours": {"unit": "h", "device_class": "duration", "state_class": STATE_CLASS_MEASUREMENT},
+    "dhw_heater_operating_hours": {"unit": "h", "device_class": "duration", "state_class": STATE_CLASS_MEASUREMENT},
     
     # Holiday shift temperatures  
-    "room_holiday_shift_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
-    "dhw_holiday_shift_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
+    "room_holiday_shift_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
+    "dhw_holiday_shift_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
     
     # Buffer temperature (for systems with buffer tank)
-    "buffer_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE},
+    "buffer_temp": {"unit": UNIT_CELSIUS, "device_class": DEVICE_CLASS_TEMPERATURE, "state_class": STATE_CLASS_MEASUREMENT},
     
     # Zone valve control
-    "z1_valve_pid": {"unit": "%", "device_class": None},
-    "z2_valve_pid": {"unit": "%", "device_class": None},
+    "z1_valve_pid": {"unit": "%", "device_class": None, "state_class": STATE_CLASS_MEASUREMENT},
+    "z2_valve_pid": {"unit": "%", "device_class": None, "state_class": STATE_CLASS_MEASUREMENT},
     
     # COP calculation (coefficient of performance)
-    "cop": {"unit": "", "device_class": None},
+    "cop": {"unit": "", "device_class": None, "state_class": STATE_CLASS_MEASUREMENT},
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -98,3 +98,4 @@ async def to_code(config):
         cg.add(var.set_unit_of_measurement(topic_config["unit"]))
     if topic_config["device_class"] and "device_class" not in config:
         cg.add(var.set_device_class(topic_config["device_class"]))
+    # Note: state_class should be set manually in YAML configuration

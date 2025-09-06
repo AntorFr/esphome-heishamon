@@ -375,6 +375,39 @@ void HeishamonComponent::send_command(const std::string &command, const std::str
   }
 }
 
+bool HeishamonComponent::send_number_command(const std::string &command, float value) {
+  ESP_LOGD(TAG, "Sending number command: %s = %.1f", command.c_str(), value);
+  
+  if (this->listen_only_) {
+    ESP_LOGW(TAG, "Cannot send command in listen-only mode");
+    return false;
+  }
+  
+  // Convert float to integer for HeishaMon protocol
+  uint8_t int_value = static_cast<uint8_t>(value);
+  
+  // Map number commands to protocol commands
+  if (command == "SetDHWTargetTemp") {
+    this->create_command("SetDHWTargetTemp", int_value);
+    return true;
+  } else if (command == "SetZ1HeatTargetTemp") {
+    this->create_command("SetZ1HeatTargetTemp", int_value);
+    return true;
+  } else if (command == "SetZ2HeatTargetTemp") {
+    this->create_command("SetZ2HeatTargetTemp", int_value);
+    return true;
+  } else if (command == "SetZ1CoolTargetTemp") {
+    this->create_command("SetZ1CoolTargetTemp", int_value);
+    return true;
+  } else if (command == "SetZ2CoolTargetTemp") {
+    this->create_command("SetZ2CoolTargetTemp", int_value);
+    return true;
+  } else {
+    ESP_LOGW(TAG, "Unknown number command: %s", command.c_str());
+    return false;
+  }
+}
+
 // Decoding functions ported from HeishaMon
 float HeishamonComponent::unknown(uint8_t input) { return -1; }
 
@@ -761,48 +794,6 @@ void HeishamonComponent::register_number(HeishamonNumber *number) {
   this->number_components_.push_back(number);
 }
 
-bool HeishamonComponent::send_number_command(const std::string &command, float value) {
-  if (this->listen_only_) {
-    ESP_LOGW(TAG, "Cannot send number command in listen-only mode");
-    return false;
-  }
-  
-  ESP_LOGD(TAG, "Sending number command: %s = %.1f", command.c_str(), value);
-  
-  // Map number commands to HeishaMon protocol
-  std::string heisha_command;
-  uint8_t command_value = 0x00;
-  
-  // Temperature control commands
-  if (command == "SetZ1HeatTargetTemp") {
-    heisha_command = "SetZ1HeatRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ2HeatTargetTemp") {
-    heisha_command = "SetZ2HeatRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ1CoolTargetTemp") {
-    heisha_command = "SetZ1CoolRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ2CoolTargetTemp") {
-    heisha_command = "SetZ2CoolRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetDHWTargetTemp") {
-    heisha_command = "SetDHWTargetTemp";
-    command_value = static_cast<uint8_t>(value);
-  }
-  
-  // For now, implement basic temperature controls
-  // More advanced commands can be added later as needed
-  else {
-    ESP_LOGW(TAG, "Number command not yet implemented: %s", command.c_str());
-    return false;
-  }
-  
-  // Create and send command using existing infrastructure
-  this->create_command(heisha_command, command_value);
-  return true;
-}
-
 // Water Heater component registration and support methods
 void HeishamonComponent::register_water_heater(HeishamonWaterHeater *water_heater) {
   this->water_heater_components_.push_back(water_heater);
@@ -824,6 +815,78 @@ bool HeishamonComponent::get_dhw_heating_state() const {
 
 int HeishamonComponent::get_dhw_mode() const {
   return this->dhw_mode_;
+}
+
+// Missing method implementations for linkage
+void HeishamonComponent::register_binary_sensor_callback(const std::string &topic, std::function<void(bool)> callback) {
+  this->binary_sensor_callbacks_[topic] = callback;
+  ESP_LOGD(TAG, "Registered binary sensor callback for topic: %s", topic.c_str());
+}
+
+void HeishamonComponent::create_command(const std::string &command, uint8_t value) {
+  ESP_LOGD(TAG, "Creating command: %s = %d", command.c_str(), value);
+  
+  if (this->listen_only_) {
+    ESP_LOGW(TAG, "Cannot send command in listen-only mode");
+    return;
+  }
+  
+  // This is a simplified command mapping - in a real implementation,
+  // you would have a comprehensive mapping of command names to their
+  // corresponding byte sequences according to the HeishaMon protocol
+  
+  std::vector<uint8_t> cmd;
+  
+  // Basic command structure for HeishaMon protocol
+  cmd.push_back(0xF1);  // Start byte for command
+  cmd.push_back(0x06);  // Command length (example)
+  cmd.push_back(0x01);  // Command type (example)
+  cmd.push_back(0x30);  // Command group (example)
+  
+  // Map command name to specific command bytes
+  if (command == "SetOperationMode") {
+    cmd.push_back(0x01);  // Operation mode command
+    cmd.push_back(value);
+  } else if (command == "SetZones") {
+    cmd.push_back(0x02);  // Zone control command
+    cmd.push_back(value);
+  } else if (command == "SetZ1HeatRequestTemperature") {
+    cmd.push_back(0x03);  // Zone 1 heat temperature command
+    cmd.push_back(value);
+  } else if (command == "SetZ1CoolRequestTemperature") {
+    cmd.push_back(0x04);  // Zone 1 cool temperature command
+    cmd.push_back(value);
+  } else if (command == "SetZ2HeatRequestTemperature") {
+    cmd.push_back(0x05);  // Zone 2 heat temperature command
+    cmd.push_back(value);
+  } else if (command == "SetZ2CoolRequestTemperature") {
+    cmd.push_back(0x06);  // Zone 2 cool temperature command
+    cmd.push_back(value);
+  } else if (command == "SetDHWTargetTemp") {
+    cmd.push_back(0x07);  // DHW target temperature command
+    cmd.push_back(value);
+  } else if (command == "SetBivalentMode") {
+    cmd.push_back(0x08);  // Bivalent mode command
+    cmd.push_back(value);
+  } else if (command == "SetExternalPadHeater") {
+    cmd.push_back(0x09);  // External pad heater command
+    cmd.push_back(value);
+  } else if (command == "SetSmartGridMode") {
+    cmd.push_back(0x0A);  // Smart grid mode command
+    cmd.push_back(value);
+  } else if (command == "SetHeatingMode") {
+    cmd.push_back(0x0B);  // Heating mode command
+    cmd.push_back(value);
+  } else if (command == "SetCoolingMode") {
+    cmd.push_back(0x0C);  // Cooling mode command
+    cmd.push_back(value);
+  } else {
+    ESP_LOGW(TAG, "Unknown command: %s", command.c_str());
+    return;
+  }
+  
+  // Send the command
+  this->send_command(cmd);
 }
 
 }  // namespace heishamon

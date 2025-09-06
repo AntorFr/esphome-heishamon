@@ -183,12 +183,12 @@ void HeishaMonClimate::update_zone_temperatures() {
   }
   
   // Update current temperature
-  if (!isnan(new_current_temp) && fabsf(new_current_temp - this->current_temperature) > 0.1f) {
+  if (!std::isnan(new_current_temp) && fabsf(new_current_temp - this->current_temperature) > 0.1f) {
     this->current_temperature = new_current_temp;
   }
   
   // Update target temperature if different
-  if (!isnan(new_target_temp) && fabsf(new_target_temp - this->target_temperature) > 0.1f) {
+  if (!std::isnan(new_target_temp) && fabsf(new_target_temp - this->target_temperature) > 0.1f) {
     this->target_temperature = new_target_temp;
   }
 }

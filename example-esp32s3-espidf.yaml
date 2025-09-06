@@ -105,6 +105,37 @@ sensor:
     topic: "operation_mode"
     name: "Operation Mode"
 
+# Climate configuration for Zone heating
+climate:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Heating"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false
+
+# Binary sensors for states  
+binary_sensor:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "heatpump_state"
+    name: "Heat Pump State"
+    device_class: running
+
+# Number controls for temperature settings
+number:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: dhw_target_temp
+    name: "DHW Target Temperature"
+
+# Select controls for mode selection
+select:
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: bivalent_mode
+    name: "Bivalent Mode"
+
 # Relay configuration
 switch:
   - platform: gpio
