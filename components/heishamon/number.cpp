@@ -8,6 +8,10 @@ namespace heishamon {
 static const char *const TAG = "heishamon.number";
 
 void HeishamonNumber::setup() {
+  ESP_LOGD(TAG, "HeishamonNumber::setup() called for %s", this->get_name().c_str());
+  ESP_LOGD(TAG, "  read_topic: '%s'", this->read_topic_.c_str());
+  ESP_LOGD(TAG, "  parent: %p", this->parent_);
+  
   // Register callback to receive current values if read_topic is set
   if (!this->read_topic_.empty() && this->parent_) {
     ESP_LOGD(TAG, "Registering number %s for topic %s", this->get_name().c_str(), this->read_topic_.c_str());
@@ -16,6 +20,9 @@ void HeishamonNumber::setup() {
       ESP_LOGD(TAG, "Received value %.1f for number %s", value, this->get_name().c_str());
       this->publish_state(value);
     });
+  } else {
+    ESP_LOGW(TAG, "Cannot register callback for %s - read_topic empty: %d, parent null: %d", 
+             this->get_name().c_str(), this->read_topic_.empty(), this->parent_ == nullptr);
   }
 }
 
