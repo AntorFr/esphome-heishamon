@@ -2,11 +2,9 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import number
 from esphome.const import CONF_ID
-from . import HeishamonComponent, heishamon_ns
+from . import HeishamonComponent, heishamon_ns, HeishamonNumber
 
 DEPENDENCIES = ["heishamon"]
-
-HeishamonNumber = heishamon_ns.class_("HeishamonNumber", cg.Component, number.Number)
 
 # Available number entities based on HeishaMon protocol analysis
 HEISHA_NUMBER_CONFIGS = {

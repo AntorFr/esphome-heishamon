@@ -1,6 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome.components import uart
+from esphome.components import uart, number
 from esphome.const import CONF_ID
 
 DEPENDENCIES = ['uart']
@@ -11,6 +11,9 @@ CONF_HEISHAMON_ID = "heishamon_id"
 
 heishamon_ns = cg.esphome_ns.namespace('heishamon')
 HeishamonComponent = heishamon_ns.class_('HeishamonComponent', cg.Component, uart.UARTDevice)
+
+# Declare number class with proper inheritance for ESPHome code generation
+HeishamonNumber = heishamon_ns.class_('HeishamonNumber', number.Number, cg.Component)
 
 CONFIG_SCHEMA = cv.All(
     cv.Schema({

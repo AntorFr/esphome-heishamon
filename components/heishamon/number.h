@@ -1,5 +1,4 @@
 #pragma once
-#ifdef USE_NUMBER
 
 #include "esphome/core/component.h"
 #include "esphome/components/number/number.h"
@@ -10,7 +9,7 @@ namespace heishamon {
 // Forward declaration
 class HeishamonComponent;
 
-class HeishamonNumber : public number::Number {
+class HeishamonNumber : public number::Number, public Component {
  public:
   void set_parent(HeishamonComponent *parent) { parent_ = parent; }
   void set_number_type(const std::string &type) { number_type_ = type; }
@@ -36,4 +35,3 @@ class HeishamonNumber : public number::Number {
 
 }  // namespace heishamon
 }  // namespace esphome
-#endif
