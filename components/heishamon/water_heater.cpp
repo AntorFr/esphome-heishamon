@@ -170,9 +170,10 @@ void HeishamonWaterHeater::update_from_heishamon() {
   }
   
   if (changed) {
+    const char* preset = this->get_custom_preset();
     ESP_LOGD(TAG, "DHW state update: action=%d, current=%.1f, target=%.1f, preset=%s",
              this->action, this->current_temperature, this->target_temperature,
-             this->custom_preset.has_value() ? this->custom_preset.value().c_str() : "none");
+             preset != nullptr ? preset : "none");
     this->publish_state();
   }
 }
