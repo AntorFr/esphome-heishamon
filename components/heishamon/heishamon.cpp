@@ -1,6 +1,10 @@
 #include "heishamon.h"
 #include "esphome/core/log.h"
 
+#ifdef USE_CLIMATE
+#include "climate.h"
+#endif
+
 namespace esphome {
 namespace heishamon {
 
@@ -200,27 +204,39 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // === ZONE TEMPERATURE TARGETS (for number entities) ===
     
     // Zone 1 Heat Request Temperature (byte 38: temperature - 128) - TOP27
-    if (this->callback_manager_->has_sensor_callback("z1_heat_request_temp")) {
+    {
       float z1_heat_temp = static_cast<float>(data[38] - 128);
-      this->callback_manager_->notify_sensor_value("z1_heat_request_temp", z1_heat_temp);
+      this->zone1_heat_target_temp_ = z1_heat_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z1_heat_request_temp")) {
+        this->callback_manager_->notify_sensor_value("z1_heat_request_temp", z1_heat_temp);
+      }
     }
     
     // Zone 1 Cool Request Temperature (byte 39: temperature - 128) - TOP28
-    if (this->callback_manager_->has_sensor_callback("z1_cool_request_temp")) {
+    {
       float z1_cool_temp = static_cast<float>(data[39] - 128);
-      this->callback_manager_->notify_sensor_value("z1_cool_request_temp", z1_cool_temp);
+      this->zone1_cool_target_temp_ = z1_cool_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z1_cool_request_temp")) {
+        this->callback_manager_->notify_sensor_value("z1_cool_request_temp", z1_cool_temp);
+      }
     }
     
     // Zone 2 Heat Request Temperature (byte 40: temperature - 128) - TOP34
-    if (this->callback_manager_->has_sensor_callback("z2_heat_request_temp")) {
+    {
       float z2_heat_temp = static_cast<float>(data[40] - 128);
-      this->callback_manager_->notify_sensor_value("z2_heat_request_temp", z2_heat_temp);
+      this->zone2_heat_target_temp_ = z2_heat_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z2_heat_request_temp")) {
+        this->callback_manager_->notify_sensor_value("z2_heat_request_temp", z2_heat_temp);
+      }
     }
     
     // Zone 2 Cool Request Temperature (byte 41: temperature - 128) - TOP35
-    if (this->callback_manager_->has_sensor_callback("z2_cool_request_temp")) {
+    {
       float z2_cool_temp = static_cast<float>(data[41] - 128);
-      this->callback_manager_->notify_sensor_value("z2_cool_request_temp", z2_cool_temp);
+      this->zone2_cool_target_temp_ = z2_cool_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z2_cool_request_temp")) {
+        this->callback_manager_->notify_sensor_value("z2_cool_request_temp", z2_cool_temp);
+      }
     }
     
     // Zone 1 Water Temperature (byte 145: temperature - 128) - TOP36
@@ -248,15 +264,21 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     }
     
     // Zone 1 Temperature (byte 139: temperature - 128) - TOP56
-    if (this->callback_manager_->has_sensor_callback("z1_temp")) {
+    {
       float z1_temp = static_cast<float>(data[139] - 128);
-      this->callback_manager_->notify_sensor_value("z1_temp", z1_temp);
+      this->zone1_current_temp_ = z1_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z1_temp")) {
+        this->callback_manager_->notify_sensor_value("z1_temp", z1_temp);
+      }
     }
     
     // Zone 2 Temperature (byte 140: temperature - 128) - TOP57
-    if (this->callback_manager_->has_sensor_callback("z2_temp")) {
+    {
       float z2_temp = static_cast<float>(data[140] - 128);
-      this->callback_manager_->notify_sensor_value("z2_temp", z2_temp);
+      this->zone2_current_temp_ = z2_temp;  // Store for climate component
+      if (this->callback_manager_->has_sensor_callback("z2_temp")) {
+        this->callback_manager_->notify_sensor_value("z2_temp", z2_temp);
+      }
     }
     
     // === ADDITIONAL TEMPERATURES ===
@@ -886,12 +908,43 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
 
     // === SELECTS ===
     
-    // Operation Mode select (byte 6)
-    if (this->callback_manager_->has_select_callback("operation_mode")) {
+    // Operation Mode select (byte 6) and climate state tracking
+    {
       std::string operation_mode_text = this->decode_operation_mode(data[6]);
-      ESP_LOGV(TAG, "Operation Mode Select: byte=0x%02X, value=%s", data[6], operation_mode_text.c_str());
-      this->callback_manager_->notify_select_value("operation_mode", operation_mode_text);
+      
+      // Update climate state tracking based on operation mode
+      // Modes containing "Heat" enable heating, modes containing "Cool" enable cooling
+      this->heat_mode_enabled_ = (operation_mode_text.find("Heat") != std::string::npos);
+      this->cool_mode_enabled_ = (operation_mode_text.find("Cool") != std::string::npos);
+      
+      if (this->callback_manager_->has_select_callback("operation_mode")) {
+        ESP_LOGV(TAG, "Operation Mode Select: byte=0x%02X, value=%s", data[6], operation_mode_text.c_str());
+        this->callback_manager_->notify_select_value("operation_mode", operation_mode_text);
+      }
     }
+    
+    // Zones State (byte 5, bits 5&6) - TOP94 and climate zone tracking
+    {
+      uint8_t zones_value = ((data[5] >> 4) & 0b11);  // bits 5&6 = zone state 0/1/2
+      
+      // Update zone enable states for climate
+      // 0 = Zone 1 only, 1 = Zone 2 only, 2 = Both zones
+      this->zone1_heat_enabled_ = (zones_value == 0 || zones_value == 2) && this->heat_mode_enabled_;
+      this->zone2_heat_enabled_ = (zones_value == 1 || zones_value == 2) && this->heat_mode_enabled_;
+      this->zone1_cool_enabled_ = (zones_value == 0 || zones_value == 2) && this->cool_mode_enabled_;
+      this->zone2_cool_enabled_ = (zones_value == 1 || zones_value == 2) && this->cool_mode_enabled_;
+      
+      ESP_LOGV(TAG, "Zones state: value=%d, z1_heat=%d, z2_heat=%d, z1_cool=%d, z2_cool=%d",
+               zones_value, this->zone1_heat_enabled_, this->zone2_heat_enabled_,
+               this->zone1_cool_enabled_, this->zone2_cool_enabled_);
+    }
+    
+    // === NOTIFY CLIMATE COMPONENTS ===
+#ifdef USE_CLIMATE
+    for (auto *climate : this->climate_components_) {
+      climate->update_from_heishamon();
+    }
+#endif
   }
 }
 
@@ -1000,67 +1053,86 @@ void HeishamonComponent::set_zone2_cool_enabled(bool enabled) {
 
 void HeishamonComponent::set_zone1_heat_target_temperature(float temperature) {
   ESP_LOGD(TAG, "Set zone1 heat target temperature: %.1f", temperature);
+  this->zone1_heat_target_temp_ = temperature;
+  // Send command to heat pump: SetZ1HeatRequestTemperature
+  this->send_command("SetZ1HeatRequestTemperature", static_cast<uint8_t>(temperature));
 }
 
 void HeishamonComponent::set_zone1_cool_target_temperature(float temperature) {
   ESP_LOGD(TAG, "Set zone1 cool target temperature: %.1f", temperature);
+  this->zone1_cool_target_temp_ = temperature;
+  // Send command to heat pump: SetZ1CoolRequestTemperature
+  this->send_command("SetZ1CoolRequestTemperature", static_cast<uint8_t>(temperature));
 }
 
 void HeishamonComponent::set_zone2_heat_target_temperature(float temperature) {
   ESP_LOGD(TAG, "Set zone2 heat target temperature: %.1f", temperature);
+  this->zone2_heat_target_temp_ = temperature;
+  // Send command to heat pump: SetZ2HeatRequestTemperature
+  this->send_command("SetZ2HeatRequestTemperature", static_cast<uint8_t>(temperature));
 }
 
 void HeishamonComponent::set_zone2_cool_target_temperature(float temperature) {
   ESP_LOGD(TAG, "Set zone2 cool target temperature: %.1f", temperature);
+  this->zone2_cool_target_temp_ = temperature;
+  // Send command to heat pump: SetZ2CoolRequestTemperature
+  this->send_command("SetZ2CoolRequestTemperature", static_cast<uint8_t>(temperature));
 }
 
 float HeishamonComponent::get_zone1_current_temperature() const {
-  return 20.0f; // Stub value
+  return this->zone1_current_temp_;
 }
 
 float HeishamonComponent::get_zone2_current_temperature() const {
-  return 20.0f; // Stub value
+  return this->zone2_current_temp_;
 }
 
 float HeishamonComponent::get_zone1_heat_target_temperature() const {
-  return 21.0f; // Stub value
+  return this->zone1_heat_target_temp_;
 }
 
 float HeishamonComponent::get_zone1_cool_target_temperature() const {
-  return 22.0f; // Stub value
+  return this->zone1_cool_target_temp_;
 }
 
 float HeishamonComponent::get_zone2_heat_target_temperature() const {
-  return 21.0f; // Stub value
+  return this->zone2_heat_target_temp_;
 }
 
 float HeishamonComponent::get_zone2_cool_target_temperature() const {
-  return 22.0f; // Stub value
+  return this->zone2_cool_target_temp_;
 }
 
 bool HeishamonComponent::get_heat_mode_enabled() const {
-  return false; // Stub value
+  return this->heat_mode_enabled_;
 }
 
 bool HeishamonComponent::get_cool_mode_enabled() const {
-  return false; // Stub value
+  return this->cool_mode_enabled_;
 }
 
 bool HeishamonComponent::get_zone1_heat_enabled() const {
-  return false; // Stub value
+  return this->zone1_heat_enabled_;
 }
 
 bool HeishamonComponent::get_zone1_cool_enabled() const {
-  return false; // Stub value
+  return this->zone1_cool_enabled_;
 }
 
 bool HeishamonComponent::get_zone2_heat_enabled() const {
-  return false; // Stub value
+  return this->zone2_heat_enabled_;
 }
 
 bool HeishamonComponent::get_zone2_cool_enabled() const {
-  return false; // Stub value
+  return this->zone2_cool_enabled_;
 }
+
+#ifdef USE_CLIMATE
+void HeishamonComponent::register_climate_component(HeishaMonClimate *climate) {
+  ESP_LOGD(TAG, "Registering climate component");
+  this->climate_components_.push_back(climate);
+}
+#endif
 
 #ifdef USE_WATER_HEATER
 float HeishamonComponent::get_dhw_current_temperature() const {

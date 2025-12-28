@@ -620,7 +620,7 @@ select:
   - platform: heishamon
     heishamon_id: heisha_main
     type: "smart_grid_mode"
-    name: "Smart Grid Mode"
+    name: "Smart Grid Mode (Optional PCB)"
     entity_category: config
 
   # Read-only selects (display current state)
@@ -757,3 +757,39 @@ switch:
     heishamon_id: heisha_main
     topic: "quiet_mode"
     name: "Quiet Mode Switch (SET3/TOP18)"
+
+# =============================================================================
+# CLIMATE - Zone temperature control
+# =============================================================================
+climate:
+  # Zone 1 Heating Climate
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 1 Climate"
+    zone_id: 1
+    supports_heat: true
+    supports_cool: false
+
+  # Zone 2 Heating Climate  
+  - platform: heishamon
+    heishamon_id: heisha_main
+    name: "Zone 2 Climate"
+    zone_id: 2
+    supports_heat: true
+    supports_cool: false
+
+  # Zone 1 Cooling Climate (optional - enable if you have cooling)
+  # - platform: heishamon
+  #   heishamon_id: heisha_main
+  #   name: "Zone 1 Cooling"
+  #   zone_id: 1
+  #   supports_heat: false
+  #   supports_cool: true
+
+  # Zone 2 Cooling Climate (optional - enable if you have cooling)
+  # - platform: heishamon
+  #   heishamon_id: heisha_main
+  #   name: "Zone 2 Cooling"
+  #   zone_id: 2
+  #   supports_heat: false
+  #   supports_cool: true

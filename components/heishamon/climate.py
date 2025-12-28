@@ -8,7 +8,7 @@ from esphome.const import (
 
 from . import CONF_HEISHAMON_ID, heishamon_ns, HeishamonComponent
 
-DEPENDENCIES = ["heishamon"]
+DEPENDENCIES = ["heishamon", "climate"]
 
 CONF_ZONE_ID = "zone_id"
 CONF_SUPPORTS_HEAT = "supports_heat"
