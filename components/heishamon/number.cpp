@@ -1,4 +1,7 @@
+#include "esphome/core/defines.h"
+#ifdef USE_NUMBER
 #include "number.h"
+#include "heishamon.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -7,24 +10,14 @@ namespace heishamon {
 static const char *const TAG = "heishamon.number";
 
 void HeishamonNumber::setup() {
-  // Register with parent component
-  this->parent_->register_number(this);
-  
-  // Restore last state if available
-  auto restore = this->get_initial_state_with_restore_mode();
-  if (restore.has_value()) {
-    this->publish_state(*restore);
-  }
-}
-
-void HeishamonNumber::dump_config() {
-  ESP_LOGCONFIG(TAG, "HeishaMon Number '%s':", this->get_name().c_str());
-  ESP_LOGCONFIG(TAG, "  Type: %s", this->number_type_.c_str());
-  ESP_LOGCONFIG(TAG, "  Command: %s", this->command_.c_str());
-  ESP_LOGCONFIG(TAG, "  Range: %.1f - %.1f", this->traits.get_min_value(), this->traits.get_max_value());
-  ESP_LOGCONFIG(TAG, "  Step: %.1f", this->traits.get_step());
-  if (!this->traits.get_unit_of_measurement().empty()) {
-    ESP_LOGCONFIG(TAG, "  Unit: %s", this->traits.get_unit_of_measurement().c_str());
+  // Register callback to receive current values if read_topic is set
+  if (!this->read_topic_.empty() && this->parent_) {
+    ESP_LOGD(TAG, "Registering number %s for topic %s", this->get_name().c_str(), this->read_topic_.c_str());
+    this->parent_->register_sensor_callback(this->read_topic_, [this](float value) {
+      // Only update the displayed value, don't trigger control
+      ESP_LOGD(TAG, "Received value %.1f for number %s", value, this->get_name().c_str());
+      this->publish_state(value);
+    });
   }
 }
 
@@ -55,3 +48,4 @@ void HeishamonNumber::control(float value) {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

@@ -47,3 +47,6 @@ esphome.log
 DEV_STATUS.md
 TRANSLATION_*.md
 *_TEMP.md
+
+# Reference HeishaMon repo (not committed)
+reference/

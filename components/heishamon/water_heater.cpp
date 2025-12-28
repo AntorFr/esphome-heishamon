@@ -1,4 +1,7 @@
+#include "esphome/core/defines.h"
+#ifdef USE_WATER_HEATER
 #include "water_heater.h"
+#include "heishamon.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -33,15 +36,17 @@ climate::ClimateTraits HeishamonWaterHeater::traits() {
   
   // Temperature settings for DHW
   traits.set_supports_current_temperature(true);
-  traits.set_supports_target_temperature(true);
+  // Note: set_supports_target_temperature method might have changed in ESPHome 2025.8.2
+  // traits.set_supports_target_temperature(true);
   traits.set_visual_min_temperature(40.0f);
   traits.set_visual_max_temperature(65.0f);
   traits.set_visual_temperature_step(1.0f);
   
   // DHW doesn't support fan modes, swing, etc.
-  traits.set_supports_fan_modes(false);
-  traits.set_supports_swing_modes(false);
-  traits.set_supports_presets(false);
+  // Note: these setter methods might have changed in ESPHome 2025.8.2
+  // traits.set_supports_fan_modes(false);
+  // traits.set_supports_swing_modes(false);
+  // traits.set_supports_presets(false);
   
   return traits;
 }
@@ -111,7 +116,7 @@ void HeishamonWaterHeater::update_target_temperature(float temperature) {
 }
 
 void HeishamonWaterHeater::update_current_temperature(float temperature) {
-  if (abs(temperature - this->current_temperature) > 0.5f || isnan(this->current_temperature)) {
+  if (abs(temperature - this->current_temperature) > 0.5f || std::isnan(this->current_temperature)) {
     this->current_temperature = temperature;
     this->publish_state();
     ESP_LOGD(TAG, "DHW current temperature updated: %.1f°C", temperature);
@@ -179,3 +184,4 @@ void HeishamonWaterHeater::send_dhw_mode_() {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif

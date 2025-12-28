@@ -1,296 +1,238 @@
 # ESPHome HeishaMon Component
 
-This is an ESPHome custom component that ports HeishaMon functionality for Panasonic heat pump communication.
-
-## Overview
-
-HeishaMon is a popular open-source project for monitoring and controlling Panasonic heat pumps. This ESPHome component provides the essential communication features, while leveraging ESPHome's built-in capabilities for WiFi, MQTT, web server, and Home Assistant integration.
+Native ESPHome component for Panasonic Aquarea heat pumps, based on the original [HeishaMon](https://github.com/Egyras/HeishaMon) project.
 
 ## Features
 
-- **📡 Serial Communication**: Full protocol implementation compatible with original HeishaMon
-- **🌡️ Advanced Sensors**: 30+ sensors including COP calculation, zone temperatures, and power monitoring
-- **🏠 Climate Controls**: Zone thermostats for heating and cooling control
-- **🔧 Switch Controls**: Force DHW, defrost, holiday mode commands
-- **👁️ Binary Sensors**: Heat pump state monitoring and system diagnostics
+- **📡 Full Protocol Support**: Complete HeishaMon protocol implementation
+- **🌡️ 100+ Sensors**: Temperature, power, pressure, operating hours, zone data
+- **🎛️ Controls**: Operating mode, quiet mode, powerful mode, DHW temperature, zone temperatures
+- **🔄 Selects**: Operating mode, quiet mode, powerful mode, zones, heating mode
+- **🔢 Numbers**: Temperature setpoints, deltas, bivalent settings
+- **🔘 Switches**: Force DHW, quiet mode
+- **📊 Binary Sensors**: Heat pump state, defrosting, zone pumps, alarms
+- **📝 Text Sensors**: Error codes, heat pump model
 - **🔇 Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
-- **⚡ Platform Support**: ESP8266 and ESP32 with optimized configurations
-- **🏡 Home Assistant**: Native integration via ESPHome API
-
-### 🆕 Phase 1 Advanced Features
-- **COP Monitoring**: Real-time coefficient of performance calculation
-- **Zone Sensors**: Individual zone water temperatures and valve control
-- **Power Separation**: DHW/Heat/Cool power consumption and production tracking
-- **Maintenance Tracking**: Operating hours for compressor and heaters
-- **Temperature Deltas**: System efficiency monitoring
-- **Holiday Settings**: Temperature shift monitoring during vacation mode
-
-See **[`docs/PHASE1_SENSORS.md`](docs/PHASE1_SENSORS.md)** for detailed sensor documentation.
+- **⚡ Platform Support**: ESP8266 and ESP32
 
 ## Quick Start
 
-1. Copy the `components/` folder to your ESPHome project
-2. Use the configuration example provided in `example-esp8266.yaml` or `example-esp32.yaml`
-3. Connect your ESP to the heat pump's CN-CNT connector via level shifter
-4. Flash and enjoy!
+### 1. Add External Component
 
-## Project Structure
-
-```
-esphome-heishamon/
-├── components/
-│   └── heishamon/
-│       ├── __init__.py           # ESPHome configuration
-│       ├── heishamon.h           # Main C++ header
-│       ├── heishamon.cpp         # Main implementation
-│       ├── sensor.py             # Sensor configuration
-│       ├── sensor.h              # Sensor header
-│       ├── sensor.cpp            # Sensor implementation
-│       ├── binary_sensor.py      # Binary sensor configuration
-│       ├── binary_sensor.h       # Binary sensor header
-│       ├── binary_sensor.cpp     # Binary sensor implementation
-│       ├── climate.py            # Climate/thermostat configuration
-│       ├── climate.h             # Climate header
-│       ├── climate.cpp           # Climate implementation
-│       ├── water_heater.py       # Water heater configuration
-│       ├── water_heater.h        # Water heater header
-│       ├── water_heater.cpp      # Water heater implementation
-│       ├── switch.py             # Switch configuration
-│       ├── switch.h              # Switch header
-│       └── switch.cpp            # Switch implementation
-├── docs/
-│   ├── WIRING.md                # Hardware wiring diagrams
-│   ├── CLIMATE.md               # Climate/thermostat documentation
-│   ├── WATER_HEATER.md          # Water heater documentation
-│   └── DEBUGGING.md             # Troubleshooting guide
-├── example-esp8266.yaml         # ESP8266 configuration example
-├── example-esp32.yaml           # ESP32 configuration example
-└── README.md                    # Main documentation
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/YOUR_USERNAME/esphome-heishamon
+      ref: main
+    components: [heishamon]
 ```
 
-## Hardware Setup
-
-For detailed wiring diagrams and hardware setup instructions, see **[`docs/WIRING.md`](docs/WIRING.md)**.
-
-### Basic Connection
-
-### ESP8266 vs ESP32 Comparison
-
-| Function | ESP8266 (Wemos D1 Mini) | ESP32 (ESP32-DEV) | Description |
-|----------|--------------------------|-------------------|-------------|
-| **TX** | GPIO15 (D8) | GPIO17 | Transmission to heat pump |
-| **RX** | GPIO13 (D7) | GPIO18 | Reception from heat pump |
-| **Enable** | GPIO5 (D1) | GPIO5 | Level shifter control (optional) |
-| **OT Enable** | - | GPIO4 | OpenTherm control (ESP32 only) |
-| **Status LED** | GPIO2 (D4) | GPIO2 | Status LED (optional) |
-| **Power** | 3.3V/5V via CN-CNT | 3.3V/5V via CN-CNT | Power from heat pump |
-
-### Wemos D1 Mini (ESP8266)
-- **TX** (GPIO15 / D8) → CN-CNT pin 2 (TX) via level shifter
-- **RX** (GPIO13 / D7) → CN-CNT pin 3 (RX) via level shifter  
-- **Enable** (GPIO5 / D1) → Level shifter control (optional)
-- **Power** 5V from CN-CNT pin 1 and 4
-
-### ESP32 Development Board
-- **TX** (GPIO17) → CN-CNT pin 2 (TX) via level shifter
-- **RX** (GPIO18) → CN-CNT pin 3 (RX) via level shifter
-- **Enable** (GPIO5) → Level shifter control (optional)
-- **OT Enable** (GPIO4) → OpenTherm control (optional)
-
-### ESP32 Advantages
-- More RAM and Flash memory
-- Serial proxy support (secondary UART)
-- Dedicated OpenTherm GPIO
-- Superior performance
-- Bluetooth support (for debugging)
-
-**Important:** A 3.3V ↔ 5V level shifter is required as the heat pump uses 5V TTL.
-
-## Configuration Examples
-
-The project includes several configuration examples:
-
-### `example-esp8266.yaml` - ESP8266 Configuration (Wemos D1 Mini)
-Optimized configuration for ESP8266 with:
-- GPIO15/13 for serial communication
-- Listen-only mode by default (recommended)
-- Essential sensors only to save memory
-- Basic WiFi and API configuration
-
-### `example-esp32.yaml` - ESP32 Configuration
-Advanced configuration for ESP32 with:
-- GPIO17/18 for main serial communication
-- Serial proxy support for monitoring (optional)
-- All available sensors
-- Advanced features (OpenTherm, status LED)
-- ESP32 internal temperature
-
-## ESPHome Configuration
-
-### Basic UART Configuration
+### 2. Configure UART
 
 ```yaml
 uart:
-  id: heisha_uart
-  tx_pin: GPIO15  # D8 for Wemos D1 Mini
-  rx_pin: GPIO13  # D7 for Wemos D1 Mini
+  id: uart_bus
+  tx_pin: GPIO17  # ESP32
+  rx_pin: GPIO16  # ESP32
   baud_rate: 9600
   parity: EVEN
   stop_bits: 1
 ```
 
-### Main Component
+### 3. Add HeishaMon Component
 
 ```yaml
 heishamon:
   id: heisha_main
-  uart_id: heisha_uart
-  update_interval: 30s    # Interval between requests (default: 30s)
-  listen_only: false      # Listen-only mode (default: false)
-  optional_pcb: false     # Optional PCB support (default: false)
+  uart_id: uart_bus
+  update_interval: 30s
+  listen_only: false  # true for CN-NMODE / CZ-TAW1 coexistence
+  optional_pcb: false
 ```
 
-#### Configuration Parameters
-
-- **update_interval**: Interval between data requests (recommended: 30s minimum)
-- **listen_only**: 
-  - `true`: Listen-only mode, sends no commands (use if CZ-TAW1 is connected)
-  - `false`: Normal mode, can send commands
-- **optional_pcb**: Support for optional PCB data (additional zones, etc.)
-
-## Available Components
-
-The HeishaMon ESPHome component provides several platform types:
-
-### Climate (Thermostats)
-
-Zone-based thermostat controls for heating and cooling. See **[`docs/CLIMATE.md`](docs/CLIMATE.md)** for detailed configuration.
+### 4. Add Sensors
 
 ```yaml
-climate:
+sensor:
   - platform: heishamon
     heishamon_id: heisha_main
-    name: "Zone 1 Heating"
-    zone_id: 1
-    supports_heat: true
-    supports_cool: false
-```
+    topic: "outside_temp"
+    name: "Outside Temperature"
 
-### Water Heater (DHW)
-
-Domestic Hot Water control with temperature and mode management. See **[`docs/WATER_HEATER.md`](docs/WATER_HEATER.md)** for detailed configuration.
-
-```yaml
-water_heater:
   - platform: heishamon
     heishamon_id: heisha_main
-    name: "Heat Pump Water Heater"
+    topic: "dhw_temp"
+    name: "DHW Temperature"
 ```
 
-### Sensors
+## Configuration Examples
 
-Temperature, power, frequency, and flow sensors from heat pump data.
+| File | Description |
+|------|-------------|
+| [example-minimal.yaml](example-minimal.yaml) | Basic configuration for testing |
+| [example-full-featured.yaml](example-full-featured.yaml) | All sensors and controls |
+| [example-esp8266.yaml](example-esp8266.yaml) | ESP8266 specific configuration |
 
-### Binary Sensors  
+## Operating Modes
 
-State monitoring for heat pump operation status.
+### Active Mode (CN-CNT)
 
-### Switches
+**Configuration:** `listen_only: false`
 
-Control switches for DHW force, defrost, holiday mode, etc.
+Connect to **CN-CNT** port for full bidirectional control:
+- ✅ All sensors
+- ✅ Temperature controls
+- ✅ Mode selection
+- ✅ Switch commands
+- ⚠️ Incompatible with CZ-TAW1
 
-### Available Sensors
+### Listen-Only Mode (CN-NMODE)
 
-| Topic | Description | Unit | Type |
-|-------|-------------|------|------|
-| `main_inlet_temp` | Main inlet temperature | °C | sensor |
-| `main_outlet_temp` | Main outlet temperature | °C | sensor |
-| `main_target_temp` | Main target temperature | °C | sensor |
-| `dhw_temp` | DHW temperature | °C | sensor |
-| `dhw_target_temp` | DHW target temperature | °C | sensor |
-| `outside_temp` | Outside temperature | °C | sensor |
-| `compressor_freq` | Compressor frequency | Hz | sensor |
-| `heat_power_production` | Heat power production | W | sensor |
-| `heat_power_consumption` | Heat power consumption | W | sensor |
-| `pump_flow` | Pump flow | m³/h | sensor |
-| `operation_mode` | Operation mode | - | sensor |
+**Configuration:** `listen_only: true`
 
-### Available Binary Sensors
+Connect to **CN-NMODE** port for passive monitoring:
+- ✅ All sensors (read-only)
+- ✅ Compatible with CZ-TAW1
+- ❌ No control commands
 
-| Topic | Description | Device Class |
-|-------|-------------|--------------|
-| `heatpump_state` | Heat pump running state | running |
+## Hardware Wiring
 
-### Available Switches
+### ESP32
 
-| Command | Description |
-|---------|-------------|
-| `force_dhw` | Force DHW heating |
-| `force_defrost` | Force defrost cycle |
-| `holiday_mode` | Enable/disable holiday mode |
-| `heatpump_state` | Turn heat pump on/off |
+| Function | GPIO | CN-CNT Pin |
+|----------|------|------------|
+| TX | GPIO17 | Pin 2 (TX) |
+| RX | GPIO16 | Pin 3 (RX) |
+| GND | GND | Pin 4 |
+| 5V | VIN | Pin 1 |
 
-See the files `example-esp8266.yaml` and `example-esp32.yaml` for complete configurations.
+### ESP8266 (Wemos D1 Mini)
+
+| Function | GPIO | CN-CNT Pin |
+|----------|------|------------|
+| TX | GPIO15 (D8) | Pin 2 (TX) |
+| RX | GPIO13 (D7) | Pin 3 (RX) |
+| GND | GND | Pin 4 |
+| 5V | 5V | Pin 1 |
+
+**⚠️ Important:** A 3.3V ↔ 5V level shifter is required!
+
+## Available Topics
+
+### Sensors (sensor platform)
+
+| Topic | Description | TOP# |
+|-------|-------------|------|
+| `pump_flow` | Pump Flow | TOP1 |
+| `outside_temp` | Outside Temperature | TOP14 |
+| `main_inlet_temp` | Main Inlet Temperature | TOP5 |
+| `main_outlet_temp` | Main Outlet Temperature | TOP6 |
+| `main_target_temp` | Main Target Temperature | TOP7 |
+| `dhw_temp` | DHW Temperature | TOP10 |
+| `dhw_target_temp` | DHW Target Temperature | TOP9 |
+| `compressor_freq` | Compressor Frequency | TOP8 |
+| `heat_power_production` | Heat Power Production | TOP15 |
+| `heat_power_consumption` | Heat Power Consumption | TOP16 |
+| `operations_hours` | Operations Hours | TOP11 |
+| `z1_water_temp` | Zone 1 Water Temperature | TOP42 |
+| `z2_water_temp` | Zone 2 Water Temperature | TOP43 |
+
+See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor list.
+
+### Binary Sensors (binary_sensor platform)
+
+| Topic | Description | TOP# |
+|-------|-------------|------|
+| `heatpump_state` | Heat Pump Running | TOP0 |
+| `defrosting_state` | Defrosting Active | TOP26 |
+| `force_dhw_state` | Force DHW Active | TOP2 |
+| `internal_heater_state` | Internal Heater | TOP60 |
+| `external_heater_state` | External Heater | TOP61 |
+| `z1_pump_state` | Zone 1 Pump | TOP124 |
+| `z2_pump_state` | Zone 2 Pump | TOP123 |
+| `alarm_state` | Alarm Active | TOP44 |
+
+### Selects (select platform)
+
+| Type | Description | TOP# |
+|------|-------------|------|
+| `operating_mode` | Heat/Cool/Auto/DHW | TOP4 |
+| `quiet_mode` | Off/Level 1/2/3/Timer | TOP18 |
+| `powerful_mode` | Off/30/60/90 min | TOP17 |
+| `zones` | Zone 1/2/Both | TOP94 |
+| `heating_mode` | Compensation/Direct | TOP76 |
+| `three_way_valve` | Room/DHW/Defrost | TOP20 |
+
+### Numbers (number platform)
+
+| Type | Description | SET# |
+|------|-------------|------|
+| `dhw_target_temp` | DHW Target (40-75°C) | SET11 |
+| `z1_heat_target_temp` | Zone 1 Heat Target | SET5 |
+| `z2_heat_target_temp` | Zone 2 Heat Target | SET6 |
+| `z1_cool_target_temp` | Zone 1 Cool Target | SET7 |
+| `z2_cool_target_temp` | Zone 2 Cool Target | SET8 |
+| `dhw_heat_delta` | DHW Heat Delta | SET18 |
+| `heat_delta` | Floor Heat Delta | SET19 |
+| `cool_delta` | Floor Cool Delta | SET20 |
+
+### Switches (switch platform)
+
+| Topic | Description |
+|-------|-------------|
+| `force_dhw` | Force DHW Heating |
+| `quiet_mode` | Toggle Quiet Mode |
+
+### Text Sensors (text_sensor platform)
+
+| Topic | Description | TOP# |
+|-------|-------------|------|
+| `error` | Error Code | TOP44 |
+| `heat_pump_model` | Heat Pump Model ID | TOP92 |
 
 ## Protocol Details
 
-### Communication Specifications
-- **Baud Rate**: 9600
-- **Parity**: EVEN
-- **Stop Bits**: 1
-- **Data Bits**: 8
+- **Baud Rate:** 9600
+- **Parity:** EVEN
+- **Stop Bits:** 1
+- **Data Packet:** 203 bytes
+- **Update Interval:** 30s recommended
 
-### Message Format
-- **Header**: 0x71 (normal), 0xF1 (optional PCB), 0x31 (init)
-- **Data Size**: 203 bytes (normal), 20 bytes (optional PCB)
-- **Checksum**: XOR of all bytes + 1
+## Supported Models
 
-### Supported Heat Pump Models
-- Panasonic Aquarea series (J, K, L, M, P generations)
-- Compatible with CN-CNT connector
-- Tested with various models from 2012-2024
-
-## Compatibility
-
-### With CZ-TAW1
-If you have a CZ-TAW1 controller installed:
-1. Set `listen_only: true` in configuration
-2. Connect in parallel to CN-CNT (do not use enable pin)
-3. Commands will be disabled to avoid conflicts
-
-### Memory Requirements
-- **ESP8266**: ~20KB RAM, ~100KB Flash
-- **ESP32**: ~15KB RAM, ~120KB Flash
-
-### Performance
-- Update interval: 30s minimum recommended
-- Packet processing time: <10ms
-- Command latency: <100ms
+Panasonic Aquarea series with CN-CNT connector:
+- J, K, L, M, P generations
+- All-in-One and Split models
+- Mono-bloc and Bi-bloc configurations
 
 ## Troubleshooting
 
-For detailed troubleshooting information, see **[`docs/DEBUGGING.md`](docs/DEBUGGING.md)**.
+### No Data Received
+1. Check TX/RX wiring (may need to swap)
+2. Verify level shifter is working
+3. Check UART settings (9600, 8E1)
 
-### Common Issues
+### Invalid Checksums
+1. Use shielded cables
+2. Add ferrite beads
+3. Keep wires away from power cables
 
-1. **No data received**: Check TX/RX connections and level shifter
-2. **Invalid checksums**: Check for electromagnetic interference
-3. **ESP restarts**: Verify power supply and GPIO conflicts
-4. **Erratic data**: Use shielded cables and ferrites
+### ESP Restarts
+1. Verify 5V power supply is stable
+2. Check for GPIO conflicts
+3. Reduce log level to WARN
+
+## Documentation
+
+- [Climate Control](docs/CLIMATE.md)
+- [Water Heater](docs/WATER_HEATER.md)
+- [Debugging Guide](docs/DEBUGGING.md)
+
+## Credits
+
+Based on the original [HeishaMon](https://github.com/Egyras/HeishaMon) project by Egyras.
 
 ## License
 
-This project is based on the original HeishaMon by Egyras:
-https://github.com/Egyras/HeishaMon
-
-## Support
-
-- **GitHub Issues**: Open a ticket with complete logs
-- **ESPHome Forum**: Post in custom components section
-- **HeishaMon Discord**: #esphome-port channel
-
-Always include:
-- Complete YAML configuration
-- Logs with DEBUG level
-- Heat pump model
-- Wiring diagram used
+MIT License - See LICENSE file for details.

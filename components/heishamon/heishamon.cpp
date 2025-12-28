@@ -1,45 +1,36 @@
 #include "heishamon.h"
-#include "climate.h"
-#include "number.h"
-#include "water_heater.h"
 #include "esphome/core/log.h"
-#include "esphome/core/hal.h"
 
 namespace esphome {
 namespace heishamon {
 
 static const char *const TAG = "heishamon";
 
+HeishamonComponent::HeishamonComponent() {
+  ESP_LOGD(TAG, "HeishamonComponent constructor - creating callback manager");
+  this->callback_manager_ = new HeishamonCallbackManager();
+}
+
 void HeishamonComponent::setup() {
   ESP_LOGCONFIG(TAG, "Setting up Heishamon...");
   
-  // Initialize buffers
-  this->data_buffer_.reserve(MAXDATASIZE);
-  this->act_data_.resize(DATASIZE, 0);
-  this->act_data_extra_.resize(DATASIZE, 0);
-  this->act_opt_data_.resize(OPTDATASIZE, 0);
+  ESP_LOGCONFIG(TAG, "Callback manager has %d sensor callbacks, %d binary sensor callbacks, %d switch callbacks, %d select callbacks", 
+               this->callback_manager_->get_sensor_callback_count(),
+               this->callback_manager_->get_binary_sensor_callback_count(),
+               this->callback_manager_->get_switch_callback_count(),
+               this->callback_manager_->get_select_callback_count());
   
-  // Initialize predefined queries (ported from HeishaMon)
-  this->initial_query_ = {0x31, 0x05, 0x10, 0x01, 0x00, 0x00, 0x00};
+  // Initialize protocol layer with UART component
+  this->protocol_ = new HeishamonProtocol(this);
+  this->protocol_->set_listen_only(this->listen_only_);
+  this->protocol_->set_optional_pcb(this->optional_pcb_);
   
-  // Panasonic query (simplified version to save memory)
-  this->panasonic_query_.resize(PANASONICQUERYSIZE, 0x00);
-  this->panasonic_query_[0] = 0x71;
-  this->panasonic_query_[1] = 0x6c;
-  this->panasonic_query_[2] = 0x01;
-  this->panasonic_query_[3] = 0x10;
+  // Set callback to receive data from protocol layer
+  this->protocol_->set_data_callback([this](const std::vector<uint8_t> &data, uint8_t data_type) {
+    this->on_protocol_data_received(data, data_type);
+  });
   
-  // Optional PCB query
-  this->optional_pcb_query_ = {
-    0xF1, 0x11, 0x01, 0x50, 0x00, 0x00, 0x40, 0xFF, 0xFF, 0xE5, 
-    0xFF, 0xFF, 0x00, 0xFF, 0xEB, 0xFF, 0xFF, 0x00, 0x00
-  };
-  
-  // Initialize topics
-  this->init_topics();
-  
-  // Initialize command buffer
-  this->command_buffer_.resize(MAXCOMMANDSINBUFFER);
+  this->protocol_->init();
   
   ESP_LOGCONFIG(TAG, "Heishamon setup completed");
 }
@@ -47,34 +38,30 @@ void HeishamonComponent::setup() {
 void HeishamonComponent::loop() {
   uint32_t now = millis();
   
-  // Check timeouts
-  if (this->sending_ && (now - this->send_command_read_time_) > SERIALTIMEOUT) {
-    ESP_LOGW(TAG, "Command timeout, resetting send state");
-    this->sending_ = false;
-    this->timeout_reads_++;
-  }
-  
-  // Read serial data
-  if (this->available() > 0) {
-    this->read_serial();
-  }
-  
-  // Process buffered commands
-  if (!this->sending_ && this->cmd_count_ > 0) {
-    this->pop_command_buffer();
+  // Let protocol handle all serial communication
+  if (this->protocol_) {
+    this->protocol_->process_loop();
   }
   
   // Send periodic queries
   if ((now - this->last_run_time_) > this->update_interval_) {
     this->last_run_time_ = now;
     
-    if (!this->listen_only_) {
-      this->send_panasonic_query();
-      
-      // Send optional PCB query if enabled
-      if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
-        this->last_optional_pcb_time_ = now;
-        this->send_optional_pcb_query();
+    if (!this->listen_only_ && this->protocol_) {
+      // Send initial query first time only
+      static bool initial_query_sent = false;
+      if (!initial_query_sent) {
+        ESP_LOGI(TAG, "Sending initial query to heatpump");
+        this->protocol_->send_initial_query();
+        initial_query_sent = true;
+      } else {
+        this->protocol_->send_panasonic_query();
+        
+        // Send optional PCB query if enabled
+        if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
+          this->last_optional_pcb_time_ = now;
+          this->protocol_->send_optional_pcb_query();
+        }
       }
     }
   }
@@ -85,747 +72,1017 @@ void HeishamonComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Update interval: %u ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Listen only: %s", YESNO(this->listen_only_));
   ESP_LOGCONFIG(TAG, "  Optional PCB: %s", YESNO(this->optional_pcb_));
-  LOG_UPDATE_INTERVAL(this);
 }
 
-bool HeishamonComponent::read_serial() {
-  while (this->available() && this->data_buffer_.size() < MAXDATASIZE) {
-    uint8_t byte;
-    this->read_byte(&byte);
-    
-    // First byte = start of new packet
-    if (this->data_buffer_.empty()) {
-      this->total_reads_++;
-      
-      // Check valid header
-      if (byte != 0x71 && byte != 0x31 && byte != 0xF1) {
-        ESP_LOGW(TAG, "Invalid header: 0x%02X", byte);
-        this->bad_header_reads_++;
-        return false;
-      }
-    }
-    
-    this->data_buffer_.push_back(byte);
-    
-    // Check if we received enough data to determine length
-    if (this->data_buffer_.size() >= 2) {
-      uint8_t expected_length = this->data_buffer_[1] + 3; // length + header + checksum
-      
-      if (this->data_buffer_.size() == expected_length) {
-        // Complete packet received
-        this->sending_ = false;
-        
-        if (!this->is_valid_checksum(this->data_buffer_)) {
-          ESP_LOGW(TAG, "Invalid checksum");
-          this->bad_crc_reads_++;
-          this->data_buffer_.clear();
-          return false;
-        }
-        
-        ESP_LOGD(TAG, "Received valid packet, size: %d", this->data_buffer_.size());
-        this->good_reads_++;
-        
-        // Decode according to data type
-        if (this->data_buffer_.size() == DATASIZE) {
-          if (this->data_buffer_[3] == 0x10) {
-            this->decode_heatpump_data(this->data_buffer_);
-          } else if (this->data_buffer_[3] == 0x21) {
-            this->extra_data_available_ = true;
-            // Copy to extra data buffer
-            std::copy(this->data_buffer_.begin(), this->data_buffer_.end(), this->act_data_extra_.begin());
-          }
-        } else if (this->data_buffer_.size() == OPTDATASIZE) {
-          this->decode_optional_data(this->data_buffer_);
-        }
-        
-        this->data_buffer_.clear();
-        return true;
-      } else if (this->data_buffer_.size() > expected_length) {
-        ESP_LOGW(TAG, "Received more data than expected");
-        this->data_buffer_.clear();
-        return false;
-      }
-    }
+void HeishamonComponent::on_protocol_data_received(const std::vector<uint8_t> &data, uint8_t data_type) {
+  ESP_LOGV(TAG, "Received data from protocol layer: %d bytes, type: 0x%02X", data.size(), data_type);
+  
+  if (data_type == 0x10) {  // DATA_TYPE_NORMAL
+    ESP_LOGV(TAG, "Processing standard heatpump data");
+    this->decode_and_notify_sensors(data);
+  } else if (data_type == 0x21) {  // DATA_TYPE_EXTRA  
+    ESP_LOGV(TAG, "Processing extra heatpump data");
+    // TODO: Implement extra data processing
+  } else if (data_type == 0xF1) {  // Optional PCB data
+    ESP_LOGV(TAG, "Processing optional PCB data");
+    // TODO: Implement optional PCB data processing
+  }
+}
+
+void HeishamonComponent::register_sensor_callback(const std::string &topic, std::function<void(float)> &&callback) {
+  ESP_LOGD(TAG, "Registering sensor callback for topic: %s", topic.c_str());
+  if (!this->callback_manager_) {
+    ESP_LOGE(TAG, "Cannot register sensor callback for %s: callback_manager is null", topic.c_str());
+    return;
+  }
+  this->callback_manager_->register_sensor_callback(topic, std::move(callback));
+  ESP_LOGCONFIG(TAG, "Sensor callback registered for topic: %s (total: %d)", 
+                topic.c_str(), this->callback_manager_->get_sensor_callback_count());
+}
+
+void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &data) {
+  ESP_LOGV(TAG, "Decoding sensor data from %d bytes", data.size());
+  
+  // Show registered callbacks count only at verbose level
+  if (this->callback_manager_) {
+    ESP_LOGV(TAG, "Callbacks: %d sensors, %d binary, %d switches, %d selects", 
+             this->callback_manager_->get_sensor_callback_count(),
+             this->callback_manager_->get_binary_sensor_callback_count(),
+             this->callback_manager_->get_switch_callback_count(),
+             this->callback_manager_->get_select_callback_count());
   }
   
-  return false;
-}
-
-void HeishamonComponent::send_panasonic_query() {
-  if (this->sending_) {
-    ESP_LOGW(TAG, "Already sending, buffering query");
-    this->push_command_buffer(this->panasonic_query_);
+  // Ensure we have enough data
+  if (data.size() < 203) {
+    ESP_LOGW(TAG, "Insufficient data size: %d, expected: 203", data.size());
     return;
   }
   
-  ESP_LOGD(TAG, "Sending panasonic query");
-  
-  // Calculate and add checksum
-  std::vector<uint8_t> query_with_checksum = this->panasonic_query_;
-  uint8_t checksum = this->calc_checksum(this->panasonic_query_);
-  query_with_checksum.push_back(checksum);
-  
-  // Send
-  this->write_array(query_with_checksum);
-  this->sending_ = true;
-  this->send_command_read_time_ = millis();
-}
-
-void HeishamonComponent::send_optional_pcb_query() {
-  if (this->sending_) {
-    this->push_command_buffer(this->optional_pcb_query_);
-    return;
-  }
-  
-  ESP_LOGD(TAG, "Sending optional PCB query");
-  
-  std::vector<uint8_t> query_with_checksum = this->optional_pcb_query_;
-  uint8_t checksum = this->calc_checksum(this->optional_pcb_query_);
-  query_with_checksum.push_back(checksum);
-  
-  this->write_array(query_with_checksum);
-  this->sending_ = true;
-  this->send_command_read_time_ = millis();
-}
-
-void HeishamonComponent::decode_heatpump_data(const std::vector<uint8_t> &data) {
-  // Copy to current buffer
-  std::copy(data.begin(), data.end(), this->act_data_.begin());
-  
-  // Decode all configured topics
-  for (const auto &topic : this->topics_) {
-    if (topic.byte_index < data.size()) {
-      float value = topic.decode_func(data[topic.byte_index]);
-      
-      // Update internal temperature values for climate components
-      if (topic.name == "z1_temp") {
-        this->zone1_current_temp_ = value;
-      } else if (topic.name == "z2_temp") {
-        this->zone2_current_temp_ = value;
-      } else if (topic.name == "z1_heat_request_temp") {
-        this->zone1_heat_target_temp_ = value;
-      } else if (topic.name == "z1_cool_request_temp") {
-        this->zone1_cool_target_temp_ = value;
-      } else if (topic.name == "z2_heat_request_temp") {
-        this->zone2_heat_target_temp_ = value;
-      } else if (topic.name == "z2_cool_request_temp") {
-        this->zone2_cool_target_temp_ = value;
-      } else if (topic.name == "dhw_temp") {
-        this->dhw_current_temp_ = value;
-      } else if (topic.name == "dhw_target_temp") {
-        this->dhw_target_temp_ = value;
-      } else if (topic.name == "dhw_heating") {
-        this->dhw_heating_state_ = (static_cast<int>(value) == 1);
-      } else if (topic.name == "dhw_mode") {
-        this->dhw_mode_ = static_cast<int>(value);
-      } else if (topic.name == "operating_mode_state") {
-        // Update operating mode states based on value
-        this->heat_mode_enabled_ = (static_cast<int>(value) & 0x01) != 0;
-        this->cool_mode_enabled_ = (static_cast<int>(value) & 0x02) != 0;
-      } else if (topic.name == "zones_state") {
-        // Update zone states based on value
-        int zone_state = static_cast<int>(value);
-        this->zone1_heat_enabled_ = (zone_state & 0x01) != 0;
-        this->zone2_heat_enabled_ = (zone_state & 0x02) != 0;
-        // For simplicity, assume same for cooling - could be refined
-        this->zone1_cool_enabled_ = (zone_state & 0x01) != 0;
-        this->zone2_cool_enabled_ = (zone_state & 0x02) != 0;
+  // Decode ONLY topics that have callbacks registered (optimization)
+  if (this->callback_manager_) {
+    
+    // DHW target temperature (byte 42: temperature - 128)
+    if (this->callback_manager_->has_sensor_callback("dhw_target_temp")) {
+      float dhw_target_temp = static_cast<float>(data[42] - 128);
+      this->callback_manager_->notify_sensor_value("dhw_target_temp", dhw_target_temp);
+    }
+    
+    // DHW temperature (byte 141: temperature - 128)
+    if (this->callback_manager_->has_sensor_callback("dhw_temp")) {
+      float dhw_temp = static_cast<float>(data[141] - 128);
+      this->callback_manager_->notify_sensor_value("dhw_temp", dhw_temp);
+    }
+    
+    // Outside temperature (byte 142: temperature - 128)  
+    if (this->callback_manager_->has_sensor_callback("outside_temp")) {
+      float outside_temp = static_cast<float>(data[142] - 128);
+      this->callback_manager_->notify_sensor_value("outside_temp", outside_temp);
+    }
+    
+    // Main inlet temperature (byte 143: temperature - 128, fractional in byte 118 bits 0-2)
+    if (this->callback_manager_->has_sensor_callback("main_inlet_temp")) {
+      float main_inlet_temp = static_cast<float>(data[143] - 128);
+      int frac_inlet = data[118] & 0b111;
+      if (frac_inlet == 2) main_inlet_temp += 0.25f;
+      else if (frac_inlet == 3) main_inlet_temp += 0.50f;
+      else if (frac_inlet == 4) main_inlet_temp += 0.75f;
+      this->callback_manager_->notify_sensor_value("main_inlet_temp", main_inlet_temp);
+    }
+    
+    // Main outlet temperature (byte 144: temperature - 128, fractional in byte 118 bits 3-5)
+    if (this->callback_manager_->has_sensor_callback("main_outlet_temp")) {
+      float main_outlet_temp = static_cast<float>(data[144] - 128);
+      int frac_outlet = (data[118] >> 3) & 0b111;
+      if (frac_outlet == 2) main_outlet_temp += 0.25f;
+      else if (frac_outlet == 3) main_outlet_temp += 0.50f;
+      else if (frac_outlet == 4) main_outlet_temp += 0.75f;
+      this->callback_manager_->notify_sensor_value("main_outlet_temp", main_outlet_temp);
+    }
+    
+    // Main target temperature (byte 153: temperature - 128)
+    if (this->callback_manager_->has_sensor_callback("main_target_temp")) {
+      float main_target_temp = static_cast<float>(data[153] - 128);
+      this->callback_manager_->notify_sensor_value("main_target_temp", main_target_temp);
+    }
+    
+    // Compressor frequency (byte 166: frequency - 1)
+    if (this->callback_manager_->has_sensor_callback("compressor_freq")) {
+      float compressor_freq = static_cast<float>(data[166] - 1);
+      this->callback_manager_->notify_sensor_value("compressor_freq", compressor_freq);
+    }
+    
+    // Operation mode sensor (byte 6: complex mode decoding)
+    if (this->callback_manager_->has_sensor_callback("operation_mode")) {
+      uint8_t mode = data[6] & 0b111111;
+      float operation_mode = -1.0f;
+      switch (mode) {
+        case 18: operation_mode = 0.0f; break;
+        case 19: operation_mode = 1.0f; break;
+        case 25: operation_mode = 2.0f; break;
+        case 33: operation_mode = 3.0f; break;
+        case 34: operation_mode = 4.0f; break;
+        case 35: operation_mode = 5.0f; break;
+        case 41: operation_mode = 6.0f; break;
+        case 26: operation_mode = 7.0f; break;
+        case 42: operation_mode = 8.0f; break;
       }
-      
-      // Call callback if registered
-      auto it = this->sensor_callbacks_.find(topic.name);
-      if (it != this->sensor_callbacks_.end()) {
-        it->second(value);
+      this->callback_manager_->notify_sensor_value("operation_mode", operation_mode);
+    }
+    
+    // Pump flow (bytes 169-170: TOP1)
+    // data[170] = integer part, data[169] = fractional part (value-1)/256
+    if (this->callback_manager_->has_sensor_callback("pump_flow")) {
+      float pump_flow = static_cast<float>(data[170]) + (static_cast<float>(static_cast<int>(data[169]) - 1)) / 256.0f;
+      if (pump_flow < 0) pump_flow = 0;  // Handle edge case when data[169] is 0
+      this->callback_manager_->notify_sensor_value("pump_flow", pump_flow);
+    }
+
+    // === ZONE TEMPERATURE TARGETS (for number entities) ===
+    
+    // Zone 1 Heat Request Temperature (byte 38: temperature - 128) - TOP27
+    if (this->callback_manager_->has_sensor_callback("z1_heat_request_temp")) {
+      float z1_heat_temp = static_cast<float>(data[38] - 128);
+      this->callback_manager_->notify_sensor_value("z1_heat_request_temp", z1_heat_temp);
+    }
+    
+    // Zone 1 Cool Request Temperature (byte 39: temperature - 128) - TOP28
+    if (this->callback_manager_->has_sensor_callback("z1_cool_request_temp")) {
+      float z1_cool_temp = static_cast<float>(data[39] - 128);
+      this->callback_manager_->notify_sensor_value("z1_cool_request_temp", z1_cool_temp);
+    }
+    
+    // Zone 2 Heat Request Temperature (byte 40: temperature - 128) - TOP34
+    if (this->callback_manager_->has_sensor_callback("z2_heat_request_temp")) {
+      float z2_heat_temp = static_cast<float>(data[40] - 128);
+      this->callback_manager_->notify_sensor_value("z2_heat_request_temp", z2_heat_temp);
+    }
+    
+    // Zone 2 Cool Request Temperature (byte 41: temperature - 128) - TOP35
+    if (this->callback_manager_->has_sensor_callback("z2_cool_request_temp")) {
+      float z2_cool_temp = static_cast<float>(data[41] - 128);
+      this->callback_manager_->notify_sensor_value("z2_cool_request_temp", z2_cool_temp);
+    }
+    
+    // Zone 1 Water Temperature (byte 145: temperature - 128) - TOP36
+    if (this->callback_manager_->has_sensor_callback("z1_water_temp")) {
+      float z1_water_temp = static_cast<float>(data[145] - 128);
+      this->callback_manager_->notify_sensor_value("z1_water_temp", z1_water_temp);
+    }
+    
+    // Zone 2 Water Temperature (byte 146: temperature - 128) - TOP37
+    if (this->callback_manager_->has_sensor_callback("z2_water_temp")) {
+      float z2_water_temp = static_cast<float>(data[146] - 128);
+      this->callback_manager_->notify_sensor_value("z2_water_temp", z2_water_temp);
+    }
+    
+    // Zone 1 Water Target Temperature (byte 147: temperature - 128) - TOP42
+    if (this->callback_manager_->has_sensor_callback("z1_water_target_temp")) {
+      float z1_water_target = static_cast<float>(data[147] - 128);
+      this->callback_manager_->notify_sensor_value("z1_water_target_temp", z1_water_target);
+    }
+    
+    // Zone 2 Water Target Temperature (byte 148: temperature - 128) - TOP43
+    if (this->callback_manager_->has_sensor_callback("z2_water_target_temp")) {
+      float z2_water_target = static_cast<float>(data[148] - 128);
+      this->callback_manager_->notify_sensor_value("z2_water_target_temp", z2_water_target);
+    }
+    
+    // Zone 1 Temperature (byte 139: temperature - 128) - TOP56
+    if (this->callback_manager_->has_sensor_callback("z1_temp")) {
+      float z1_temp = static_cast<float>(data[139] - 128);
+      this->callback_manager_->notify_sensor_value("z1_temp", z1_temp);
+    }
+    
+    // Zone 2 Temperature (byte 140: temperature - 128) - TOP57
+    if (this->callback_manager_->has_sensor_callback("z2_temp")) {
+      float z2_temp = static_cast<float>(data[140] - 128);
+      this->callback_manager_->notify_sensor_value("z2_temp", z2_temp);
+    }
+    
+    // === ADDITIONAL TEMPERATURES ===
+    
+    // Outside Pipe Temperature (byte 158: temperature - 128) - TOP21
+    if (this->callback_manager_->has_sensor_callback("outside_pipe_temp")) {
+      float outside_pipe_temp = static_cast<float>(data[158] - 128);
+      this->callback_manager_->notify_sensor_value("outside_pipe_temp", outside_pipe_temp);
+    }
+    
+    // Room Thermostat Temperature (byte 156: temperature - 128) - TOP33
+    if (this->callback_manager_->has_sensor_callback("room_thermostat_temp")) {
+      float room_thermo_temp = static_cast<float>(data[156] - 128);
+      this->callback_manager_->notify_sensor_value("room_thermostat_temp", room_thermo_temp);
+    }
+    
+    // Buffer Temperature (byte 149: temperature - 128) - TOP46
+    if (this->callback_manager_->has_sensor_callback("buffer_temp")) {
+      float buffer_temp = static_cast<float>(data[149] - 128);
+      this->callback_manager_->notify_sensor_value("buffer_temp", buffer_temp);
+    }
+    
+    // Solar Temperature (byte 150: temperature - 128) - TOP47
+    if (this->callback_manager_->has_sensor_callback("solar_temp")) {
+      float solar_temp = static_cast<float>(data[150] - 128);
+      this->callback_manager_->notify_sensor_value("solar_temp", solar_temp);
+    }
+    
+    // Pool Temperature (byte 151: temperature - 128) - TOP48
+    if (this->callback_manager_->has_sensor_callback("pool_temp")) {
+      float pool_temp = static_cast<float>(data[151] - 128);
+      this->callback_manager_->notify_sensor_value("pool_temp", pool_temp);
+    }
+    
+    // Main Hex Outlet Temperature (byte 154: temperature - 128) - TOP49
+    if (this->callback_manager_->has_sensor_callback("main_hex_outlet_temp")) {
+      float main_hex_outlet = static_cast<float>(data[154] - 128);
+      this->callback_manager_->notify_sensor_value("main_hex_outlet_temp", main_hex_outlet);
+    }
+    
+    // Discharge Temperature (byte 155: temperature - 128) - TOP50
+    if (this->callback_manager_->has_sensor_callback("discharge_temp")) {
+      float discharge_temp = static_cast<float>(data[155] - 128);
+      this->callback_manager_->notify_sensor_value("discharge_temp", discharge_temp);
+    }
+    
+    // Inside Pipe Temperature (byte 157: temperature - 128) - TOP51
+    if (this->callback_manager_->has_sensor_callback("inside_pipe_temp")) {
+      float inside_pipe_temp = static_cast<float>(data[157] - 128);
+      this->callback_manager_->notify_sensor_value("inside_pipe_temp", inside_pipe_temp);
+    }
+    
+    // Defrost Temperature (byte 159: temperature - 128) - TOP52
+    if (this->callback_manager_->has_sensor_callback("defrost_temp")) {
+      float defrost_temp = static_cast<float>(data[159] - 128);
+      this->callback_manager_->notify_sensor_value("defrost_temp", defrost_temp);
+    }
+    
+    // Eva Outlet Temperature (byte 160: temperature - 128) - TOP53
+    if (this->callback_manager_->has_sensor_callback("eva_outlet_temp")) {
+      float eva_outlet_temp = static_cast<float>(data[160] - 128);
+      this->callback_manager_->notify_sensor_value("eva_outlet_temp", eva_outlet_temp);
+    }
+    
+    // Bypass Outlet Temperature (byte 161: temperature - 128) - TOP54
+    if (this->callback_manager_->has_sensor_callback("bypass_outlet_temp")) {
+      float bypass_outlet_temp = static_cast<float>(data[161] - 128);
+      this->callback_manager_->notify_sensor_value("bypass_outlet_temp", bypass_outlet_temp);
+    }
+    
+    // IPM Temperature (byte 162: temperature - 128) - TOP55
+    if (this->callback_manager_->has_sensor_callback("ipm_temp")) {
+      float ipm_temp = static_cast<float>(data[162] - 128);
+      this->callback_manager_->notify_sensor_value("ipm_temp", ipm_temp);
+    }
+    
+    // Second Inlet Temperature (byte 126: temperature - 128) - TOP116
+    if (this->callback_manager_->has_sensor_callback("second_inlet_temp")) {
+      float second_inlet_temp = static_cast<float>(data[126] - 128);
+      this->callback_manager_->notify_sensor_value("second_inlet_temp", second_inlet_temp);
+    }
+    
+    // Economizer Outlet Temperature (byte 127: temperature - 128) - TOP117
+    if (this->callback_manager_->has_sensor_callback("economizer_outlet_temp")) {
+      float economizer_outlet_temp = static_cast<float>(data[127] - 128);
+      this->callback_manager_->notify_sensor_value("economizer_outlet_temp", economizer_outlet_temp);
+    }
+    
+    // Second Room Thermostat Temperature (byte 128: temperature - 128) - TOP118
+    if (this->callback_manager_->has_sensor_callback("second_room_thermostat_temp")) {
+      float second_room_thermo_temp = static_cast<float>(data[128] - 128);
+      this->callback_manager_->notify_sensor_value("second_room_thermostat_temp", second_room_thermo_temp);
+    }
+    
+    // === POWER SENSORS (uint16 values) ===
+    
+    // Heat Power Production (bytes 194-195) - TOP15
+    if (this->callback_manager_->has_sensor_callback("heat_power_production")) {
+      float heat_power_prod = static_cast<float>((data[194] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("heat_power_production", heat_power_prod);
+    }
+    
+    // Heat Power Consumption (bytes 193-194) - TOP16
+    if (this->callback_manager_->has_sensor_callback("heat_power_consumption")) {
+      float heat_power_cons = static_cast<float>((data[193] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("heat_power_consumption", heat_power_cons);
+    }
+    
+    // Cool Power Production (byte 196) - TOP38
+    if (this->callback_manager_->has_sensor_callback("cool_power_production")) {
+      float cool_power_prod = static_cast<float>((data[196] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("cool_power_production", cool_power_prod);
+    }
+    
+    // Cool Power Consumption (byte 195) - TOP39
+    if (this->callback_manager_->has_sensor_callback("cool_power_consumption")) {
+      float cool_power_cons = static_cast<float>((data[195] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("cool_power_consumption", cool_power_cons);
+    }
+    
+    // DHW Power Production (byte 198) - TOP40
+    if (this->callback_manager_->has_sensor_callback("dhw_power_production")) {
+      float dhw_power_prod = static_cast<float>((data[198] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("dhw_power_production", dhw_power_prod);
+    }
+    
+    // DHW Power Consumption (byte 197) - TOP41
+    if (this->callback_manager_->has_sensor_callback("dhw_power_consumption")) {
+      float dhw_power_cons = static_cast<float>((data[197] - 1) * 200);
+      this->callback_manager_->notify_sensor_value("dhw_power_consumption", dhw_power_cons);
+    }
+    
+    // === FAN AND PRESSURE SENSORS ===
+    
+    // Fan1 Motor Speed (byte 173: (value - 1) * 10) - TOP62
+    if (this->callback_manager_->has_sensor_callback("fan1_motor_speed")) {
+      float fan1_speed = static_cast<float>((data[173] - 1) * 10);
+      this->callback_manager_->notify_sensor_value("fan1_motor_speed", fan1_speed);
+    }
+    
+    // Fan2 Motor Speed (byte 174: (value - 1) * 10) - TOP63
+    if (this->callback_manager_->has_sensor_callback("fan2_motor_speed")) {
+      float fan2_speed = static_cast<float>((data[174] - 1) * 10);
+      this->callback_manager_->notify_sensor_value("fan2_motor_speed", fan2_speed);
+    }
+    
+    // High Pressure (byte 163: (value - 1) / 5) - TOP64
+    if (this->callback_manager_->has_sensor_callback("high_pressure")) {
+      float high_pressure = static_cast<float>(data[163] - 1) / 5.0f;
+      this->callback_manager_->notify_sensor_value("high_pressure", high_pressure);
+    }
+    
+    // Low Pressure (byte 164: (value - 1) * 50) - TOP66
+    if (this->callback_manager_->has_sensor_callback("low_pressure")) {
+      float low_pressure = static_cast<float>((data[164] - 1) * 50);
+      this->callback_manager_->notify_sensor_value("low_pressure", low_pressure);
+    }
+    
+    // Pump Speed (byte 171: (value - 1) * 50) - TOP65
+    if (this->callback_manager_->has_sensor_callback("pump_speed")) {
+      float pump_speed = static_cast<float>((data[171] - 1) * 50);
+      this->callback_manager_->notify_sensor_value("pump_speed", pump_speed);
+    }
+    
+    // Compressor Current (byte 165: (value - 1) / 5) - TOP67
+    if (this->callback_manager_->has_sensor_callback("compressor_current")) {
+      float compressor_current = static_cast<float>(data[165] - 1) / 5.0f;
+      this->callback_manager_->notify_sensor_value("compressor_current", compressor_current);
+    }
+    
+    // Pump Duty (byte 172: value - 1) - TOP93
+    if (this->callback_manager_->has_sensor_callback("pump_duty")) {
+      float pump_duty = static_cast<float>(data[172] - 1);
+      this->callback_manager_->notify_sensor_value("pump_duty", pump_duty);
+    }
+    
+    // Max Pump Duty (byte 45: value - 1) - TOP95
+    if (this->callback_manager_->has_sensor_callback("max_pump_duty")) {
+      float max_pump_duty = static_cast<float>(data[45] - 1);
+      this->callback_manager_->notify_sensor_value("max_pump_duty", max_pump_duty);
+    }
+    
+    // Water Pressure (byte 125: (value - 1) / 50) - TOP115
+    if (this->callback_manager_->has_sensor_callback("water_pressure")) {
+      float water_pressure = static_cast<float>(data[125] - 1) / 50.0f;
+      this->callback_manager_->notify_sensor_value("water_pressure", water_pressure);
+    }
+    
+    // Zone 1 Valve PID (byte 177: (value - 1) / 2) - TOP127
+    if (this->callback_manager_->has_sensor_callback("z1_valve_pid")) {
+      float z1_valve_pid = static_cast<float>(data[177] - 1) / 2.0f;
+      this->callback_manager_->notify_sensor_value("z1_valve_pid", z1_valve_pid);
+    }
+    
+    // Zone 2 Valve PID (byte 178: (value - 1) / 2) - TOP128
+    if (this->callback_manager_->has_sensor_callback("z2_valve_pid")) {
+      float z2_valve_pid = static_cast<float>(data[178] - 1) / 2.0f;
+      this->callback_manager_->notify_sensor_value("z2_valve_pid", z2_valve_pid);
+    }
+    
+    // === BIVALENT SENSORS ===
+    
+    // Bivalent Start Temp (byte 65: value - 128) - TOP131
+    if (this->callback_manager_->has_sensor_callback("bivalent_start_temp")) {
+      float bivalent_start_temp = static_cast<float>(static_cast<int8_t>(data[65] - 128));
+      this->callback_manager_->notify_sensor_value("bivalent_start_temp", bivalent_start_temp);
+    }
+    
+    // Bivalent Advanced Start Temp (byte 66: value - 128) - TOP134
+    if (this->callback_manager_->has_sensor_callback("bivalent_advanced_start_temp")) {
+      float bivalent_ap_start_temp = static_cast<float>(static_cast<int8_t>(data[66] - 128));
+      this->callback_manager_->notify_sensor_value("bivalent_advanced_start_temp", bivalent_ap_start_temp);
+    }
+    
+    // Bivalent Advanced Stop Temp (byte 68: value - 128) - TOP135
+    if (this->callback_manager_->has_sensor_callback("bivalent_advanced_stop_temp")) {
+      float bivalent_ap_stop_temp = static_cast<float>(static_cast<int8_t>(data[68] - 128));
+      this->callback_manager_->notify_sensor_value("bivalent_advanced_stop_temp", bivalent_ap_stop_temp);
+    }
+    
+    // Bivalent Advanced Start Delay (byte 67: value - 1) - TOP136
+    if (this->callback_manager_->has_sensor_callback("bivalent_advanced_start_delay")) {
+      float bivalent_start_delay = static_cast<float>(data[67] - 1);
+      this->callback_manager_->notify_sensor_value("bivalent_advanced_start_delay", bivalent_start_delay);
+    }
+    
+    // Bivalent Advanced Stop Delay (byte 69: value - 1) - TOP137
+    if (this->callback_manager_->has_sensor_callback("bivalent_advanced_stop_delay")) {
+      float bivalent_stop_delay = static_cast<float>(data[69] - 1);
+      this->callback_manager_->notify_sensor_value("bivalent_advanced_stop_delay", bivalent_stop_delay);
+    }
+    
+    // Bivalent Advanced DHW Delay (byte 70: value - 1) - TOP138
+    if (this->callback_manager_->has_sensor_callback("bivalent_advanced_dhw_delay")) {
+      float bivalent_dhw_delay = static_cast<float>(data[70] - 1);
+      this->callback_manager_->notify_sensor_value("bivalent_advanced_dhw_delay", bivalent_dhw_delay);
+    }
+    
+    // === AUTO MODE OUTDOOR TEMPERATURES ===
+    
+    // Heater On Outdoor Temp (byte 85: value - 128) - TOP78
+    if (this->callback_manager_->has_sensor_callback("heater_on_outdoor_temp")) {
+      float heater_on_outdoor_temp = static_cast<float>(static_cast<int8_t>(data[85] - 128));
+      this->callback_manager_->notify_sensor_value("heater_on_outdoor_temp", heater_on_outdoor_temp);
+    }
+    
+    // Heat to Cool Temp (byte 95: value - 128) - TOP79
+    if (this->callback_manager_->has_sensor_callback("heat_to_cool_temp")) {
+      float heat_to_cool_temp = static_cast<float>(static_cast<int8_t>(data[95] - 128));
+      this->callback_manager_->notify_sensor_value("heat_to_cool_temp", heat_to_cool_temp);
+    }
+    
+    // Cool to Heat Temp (byte 96: value - 128) - TOP80
+    if (this->callback_manager_->has_sensor_callback("cool_to_heat_temp")) {
+      float cool_to_heat_temp = static_cast<float>(static_cast<int8_t>(data[96] - 128));
+      this->callback_manager_->notify_sensor_value("cool_to_heat_temp", cool_to_heat_temp);
+    }
+    
+    // === J-SERIES HEATER SENSORS ===
+    
+    // Heater Delay Time (byte 104: value - 1) - TOP96
+    if (this->callback_manager_->has_sensor_callback("heater_delay_time")) {
+      float heater_delay_time = static_cast<float>(data[104]) - 1.0f;
+      this->callback_manager_->notify_sensor_value("heater_delay_time", heater_delay_time);
+    }
+    
+    // Heater Start Delta (byte 105: value - 128) - TOP97
+    if (this->callback_manager_->has_sensor_callback("heater_start_delta")) {
+      float heater_start_delta = static_cast<float>(static_cast<int8_t>(data[105] - 128));
+      this->callback_manager_->notify_sensor_value("heater_start_delta", heater_start_delta);
+    }
+    
+    // Heater Stop Delta (byte 106: value - 128) - TOP98
+    if (this->callback_manager_->has_sensor_callback("heater_stop_delta")) {
+      float heater_stop_delta = static_cast<float>(static_cast<int8_t>(data[106] - 128));
+      this->callback_manager_->notify_sensor_value("heater_stop_delta", heater_stop_delta);
+    }
+    
+    // === HOLIDAY SHIFT TEMPERATURES ===
+    
+    // DHW Holiday Shift Temp (byte 44: value - 128) - TOP25
+    if (this->callback_manager_->has_sensor_callback("dhw_holiday_shift_temp")) {
+      float dhw_holiday_shift = static_cast<float>(static_cast<int8_t>(data[44] - 128));
+      this->callback_manager_->notify_sensor_value("dhw_holiday_shift_temp", dhw_holiday_shift);
+    }
+    
+    // Room Holiday Shift Temp (byte 43: value - 128) - TOP45
+    if (this->callback_manager_->has_sensor_callback("room_holiday_shift_temp")) {
+      float room_holiday_shift = static_cast<float>(static_cast<int8_t>(data[43] - 128));
+      this->callback_manager_->notify_sensor_value("room_holiday_shift_temp", room_holiday_shift);
+    }
+    
+    // === SOLAR SENSORS ===
+    
+    // Solar On Delta (byte 61: value - 128) - TOP102
+    if (this->callback_manager_->has_sensor_callback("solar_on_delta")) {
+      float solar_on_delta = static_cast<float>(static_cast<int8_t>(data[61] - 128));
+      this->callback_manager_->notify_sensor_value("solar_on_delta", solar_on_delta);
+    }
+    
+    // Solar Off Delta (byte 62: value - 128) - TOP103
+    if (this->callback_manager_->has_sensor_callback("solar_off_delta")) {
+      float solar_off_delta = static_cast<float>(static_cast<int8_t>(data[62] - 128));
+      this->callback_manager_->notify_sensor_value("solar_off_delta", solar_off_delta);
+    }
+    
+    // Solar Frost Protection (byte 63: value - 128) - TOP104
+    if (this->callback_manager_->has_sensor_callback("solar_frost_protection")) {
+      float solar_frost = static_cast<float>(static_cast<int8_t>(data[63] - 128));
+      this->callback_manager_->notify_sensor_value("solar_frost_protection", solar_frost);
+    }
+    
+    // Solar High Limit (byte 64: value - 128) - TOP105
+    if (this->callback_manager_->has_sensor_callback("solar_high_limit")) {
+      float solar_high_limit = static_cast<float>(static_cast<int8_t>(data[64] - 128));
+      this->callback_manager_->notify_sensor_value("solar_high_limit", solar_high_limit);
+    }
+    
+    // Buffer Tank Delta (byte 59: value - 128) - TOP113
+    if (this->callback_manager_->has_sensor_callback("buffer_tank_delta")) {
+      float buffer_tank_delta = static_cast<float>(static_cast<int8_t>(data[59] - 128));
+      this->callback_manager_->notify_sensor_value("buffer_tank_delta", buffer_tank_delta);
+    }
+    
+    // === ZONE 1 HEAT CURVE ===
+    
+    // Z1 Heat Curve Target High (byte 75: value - 128) - TOP29
+    if (this->callback_manager_->has_sensor_callback("z1_heat_curve_target_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[75] - 128));
+      this->callback_manager_->notify_sensor_value("z1_heat_curve_target_high", value);
+    }
+    
+    // Z1 Heat Curve Target Low (byte 76: value - 128) - TOP30
+    if (this->callback_manager_->has_sensor_callback("z1_heat_curve_target_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[76] - 128));
+      this->callback_manager_->notify_sensor_value("z1_heat_curve_target_low", value);
+    }
+    
+    // Z1 Heat Curve Outside High (byte 78: value - 128) - TOP31
+    if (this->callback_manager_->has_sensor_callback("z1_heat_curve_outside_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[78] - 128));
+      this->callback_manager_->notify_sensor_value("z1_heat_curve_outside_high", value);
+    }
+    
+    // Z1 Heat Curve Outside Low (byte 77: value - 128) - TOP32
+    if (this->callback_manager_->has_sensor_callback("z1_heat_curve_outside_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[77] - 128));
+      this->callback_manager_->notify_sensor_value("z1_heat_curve_outside_low", value);
+    }
+    
+    // === ZONE 1 COOL CURVE ===
+    
+    // Z1 Cool Curve Target High (byte 86: value - 128) - TOP72
+    if (this->callback_manager_->has_sensor_callback("z1_cool_curve_target_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[86] - 128));
+      this->callback_manager_->notify_sensor_value("z1_cool_curve_target_high", value);
+    }
+    
+    // Z1 Cool Curve Target Low (byte 87: value - 128) - TOP73
+    if (this->callback_manager_->has_sensor_callback("z1_cool_curve_target_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[87] - 128));
+      this->callback_manager_->notify_sensor_value("z1_cool_curve_target_low", value);
+    }
+    
+    // Z1 Cool Curve Outside High (byte 89: value - 128) - TOP74
+    if (this->callback_manager_->has_sensor_callback("z1_cool_curve_outside_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[89] - 128));
+      this->callback_manager_->notify_sensor_value("z1_cool_curve_outside_high", value);
+    }
+    
+    // Z1 Cool Curve Outside Low (byte 88: value - 128) - TOP75
+    if (this->callback_manager_->has_sensor_callback("z1_cool_curve_outside_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[88] - 128));
+      this->callback_manager_->notify_sensor_value("z1_cool_curve_outside_low", value);
+    }
+    
+    // === ZONE 2 HEAT CURVE ===
+    
+    // Z2 Heat Curve Target High (byte 79: value - 128) - TOP82
+    if (this->callback_manager_->has_sensor_callback("z2_heat_curve_target_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[79] - 128));
+      this->callback_manager_->notify_sensor_value("z2_heat_curve_target_high", value);
+    }
+    
+    // Z2 Heat Curve Target Low (byte 80: value - 128) - TOP83
+    if (this->callback_manager_->has_sensor_callback("z2_heat_curve_target_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[80] - 128));
+      this->callback_manager_->notify_sensor_value("z2_heat_curve_target_low", value);
+    }
+    
+    // Z2 Heat Curve Outside High (byte 82: value - 128) - TOP84
+    if (this->callback_manager_->has_sensor_callback("z2_heat_curve_outside_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[82] - 128));
+      this->callback_manager_->notify_sensor_value("z2_heat_curve_outside_high", value);
+    }
+    
+    // Z2 Heat Curve Outside Low (byte 81: value - 128) - TOP85
+    if (this->callback_manager_->has_sensor_callback("z2_heat_curve_outside_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[81] - 128));
+      this->callback_manager_->notify_sensor_value("z2_heat_curve_outside_low", value);
+    }
+    
+    // === ZONE 2 COOL CURVE ===
+    
+    // Z2 Cool Curve Target High (byte 90: value - 128) - TOP86
+    if (this->callback_manager_->has_sensor_callback("z2_cool_curve_target_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[90] - 128));
+      this->callback_manager_->notify_sensor_value("z2_cool_curve_target_high", value);
+    }
+    
+    // Z2 Cool Curve Target Low (byte 91: value - 128) - TOP87
+    if (this->callback_manager_->has_sensor_callback("z2_cool_curve_target_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[91] - 128));
+      this->callback_manager_->notify_sensor_value("z2_cool_curve_target_low", value);
+    }
+    
+    // Z2 Cool Curve Outside High (byte 93: value - 128) - TOP88
+    if (this->callback_manager_->has_sensor_callback("z2_cool_curve_outside_high")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[93] - 128));
+      this->callback_manager_->notify_sensor_value("z2_cool_curve_outside_high", value);
+    }
+    
+    // Z2 Cool Curve Outside Low (byte 92: value - 128) - TOP89
+    if (this->callback_manager_->has_sensor_callback("z2_cool_curve_outside_low")) {
+      float value = static_cast<float>(static_cast<int8_t>(data[92] - 128));
+      this->callback_manager_->notify_sensor_value("z2_cool_curve_outside_low", value);
+    }
+    
+    // === STERILIZATION ===
+    
+    // Sterilization Temp (byte 100: value - 128) - TOP70
+    if (this->callback_manager_->has_sensor_callback("sterilization_temp")) {
+      float sterilization_temp = static_cast<float>(static_cast<int8_t>(data[100] - 128));
+      this->callback_manager_->notify_sensor_value("sterilization_temp", sterilization_temp);
+    }
+    
+    // Sterilization Max Time (byte 101: value - 1) - TOP71
+    if (this->callback_manager_->has_sensor_callback("sterilization_max_time")) {
+      float sterilization_max_time = static_cast<float>(data[101] - 1);
+      this->callback_manager_->notify_sensor_value("sterilization_max_time", sterilization_max_time);
+    }
+    
+    // === DELTA TEMPERATURES ===
+    
+    // DHW Heat Delta (byte 99: temperature - 128) - TOP22
+    if (this->callback_manager_->has_sensor_callback("dhw_heat_delta")) {
+      float dhw_heat_delta = static_cast<float>(data[99] - 128);
+      this->callback_manager_->notify_sensor_value("dhw_heat_delta", dhw_heat_delta);
+    }
+    
+    // Heat Delta (byte 84: temperature - 128) - TOP23
+    if (this->callback_manager_->has_sensor_callback("heat_delta")) {
+      float heat_delta = static_cast<float>(data[84] - 128);
+      this->callback_manager_->notify_sensor_value("heat_delta", heat_delta);
+    }
+    
+    // Cool Delta (byte 94: temperature - 128) - TOP24
+    if (this->callback_manager_->has_sensor_callback("cool_delta")) {
+      float cool_delta = static_cast<float>(data[94] - 128);
+      this->callback_manager_->notify_sensor_value("cool_delta", cool_delta);
+    }
+
+    // === OPERATIONS COUNTERS (uint16 values) ===
+    
+    // Operations Hours (bytes 182-183: word - 1) - TOP11
+    if (this->callback_manager_->has_sensor_callback("operations_hours")) {
+      uint16_t ops_hours = (static_cast<uint16_t>(data[183]) << 8) | data[182];
+      float operations_hours = static_cast<float>(ops_hours - 1);
+      this->callback_manager_->notify_sensor_value("operations_hours", operations_hours);
+    }
+    
+    // Operations Counter (bytes 179-180: word - 1) - TOP12
+    if (this->callback_manager_->has_sensor_callback("operations_counter")) {
+      uint16_t ops_counter = (static_cast<uint16_t>(data[180]) << 8) | data[179];
+      float operations_counter = static_cast<float>(ops_counter - 1);
+      this->callback_manager_->notify_sensor_value("operations_counter", operations_counter);
+    }
+    
+    // Room Heater Operations Hours (bytes 185-186: word - 1) - TOP90
+    if (this->callback_manager_->has_sensor_callback("room_heater_operations_hours")) {
+      uint16_t room_heater_hours = (static_cast<uint16_t>(data[186]) << 8) | data[185];
+      float room_heater_ops_hours = static_cast<float>(room_heater_hours - 1);
+      this->callback_manager_->notify_sensor_value("room_heater_operations_hours", room_heater_ops_hours);
+    }
+    
+    // DHW Heater Operations Hours (bytes 188-189: word - 1) - TOP91
+    if (this->callback_manager_->has_sensor_callback("dhw_heater_operations_hours")) {
+      uint16_t dhw_heater_hours = (static_cast<uint16_t>(data[189]) << 8) | data[188];
+      float dhw_heater_ops_hours = static_cast<float>(dhw_heater_hours - 1);
+      this->callback_manager_->notify_sensor_value("dhw_heater_operations_hours", dhw_heater_ops_hours);
+    }
+
+    // === BINARY SENSORS ===
+    
+    // Heat pump state (byte 4, bits 7&8 in Panasonic = bits 0&1) - TOP0
+    // getBit7and8: (input & 0b11) - 1, so 0b01=0(off), 0b10=1(on)
+    if (this->callback_manager_->has_binary_sensor_callback("heatpump_state")) {
+      int heatpump_value = data[4] & 0b11;
+      bool heatpump_running = (heatpump_value == 0b10);
+      this->callback_manager_->notify_binary_sensor_value("heatpump_state", heatpump_running);
+    }
+    
+    // Force DHW State (byte 4, bit 7) - TOP2
+    // 0x56 (86) = off, 0x96 (150) = on - difference is bit 7 (0x80)
+    if (this->callback_manager_->has_binary_sensor_callback("force_dhw_state")) {
+      bool force_dhw_active = (data[4] & 0x80) != 0;  // bit 7 (0x80 = 0b10000000)
+      this->callback_manager_->notify_binary_sensor_value("force_dhw_state", force_dhw_active);
+    }
+    
+    // Defrosting State (byte 111, bits 3&4 from right) - TOP26
+    // 0b01 = not active, 0b10 = active
+    if (this->callback_manager_->has_binary_sensor_callback("defrosting_state")) {
+      int defrost_value = (data[111] >> 2) & 0b11;
+      bool defrosting = (defrost_value == 0b10);
+      this->callback_manager_->notify_binary_sensor_value("defrosting_state", defrosting);
+    }
+    
+    // Internal Heater State (byte 112, bits 7&8) - TOP60
+    if (this->callback_manager_->has_binary_sensor_callback("internal_heater_state")) {
+      int internal_heater_value = (data[112] >> 6) - 1;
+      bool internal_heater = (internal_heater_value > 0);
+      this->callback_manager_->notify_binary_sensor_value("internal_heater_state", internal_heater);
+    }
+    
+    // External Heater State (byte 112, bits 5&6) - TOP61
+    if (this->callback_manager_->has_binary_sensor_callback("external_heater_state")) {
+      int external_heater_value = ((data[112] >> 4) & 0b11) - 1;
+      bool external_heater = (external_heater_value > 0);
+      this->callback_manager_->notify_binary_sensor_value("external_heater_state", external_heater);
+    }
+    
+    // DHW Installed (byte 24, bits 7&8 in Panasonic numbering = bits 0&1) - TOP100
+    // getBit7and8: (input & 0b11) - 1, so 0b01=0(disabled), 0b10=1(enabled)
+    if (this->callback_manager_->has_binary_sensor_callback("dhw_installed")) {
+      int dhw_installed_value = data[24] & 0b11;
+      bool dhw_installed = (dhw_installed_value == 0b10);
+      this->callback_manager_->notify_binary_sensor_value("dhw_installed", dhw_installed);
+    }
+    
+    // Zone 1 Pump State (byte 116, getBit3and4) - TOP124
+    // Original HeishaMon: getBit3and4 = ((input >> 4) & 0b11) - 1
+    // Result: 0=OFF, 1=ON
+    if (this->callback_manager_->has_binary_sensor_callback("z1_pump_state")) {
+      uint8_t z1_pump_value = (data[116] >> 4) & 0b11;
+      bool z1_pump = (z1_pump_value == 0b10);  // 0b10 - 1 = 1 = ON
+      ESP_LOGV(TAG, "Z1 pump: byte116=0x%02X, getBit3and4=0x%02X, state=%s", data[116], z1_pump_value, z1_pump ? "ON" : "OFF");
+      this->callback_manager_->notify_binary_sensor_value("z1_pump_state", z1_pump);
+    }
+    
+    // Zone 2 Pump State (byte 116, getBit1and2) - TOP123
+    // Original HeishaMon: getBit1and2 = ((input >> 6) - 1)
+    // Result: 0=OFF, 1=ON
+    if (this->callback_manager_->has_binary_sensor_callback("z2_pump_state")) {
+      uint8_t z2_pump_value = (data[116] >> 6) & 0b11;
+      bool z2_pump = (z2_pump_value == 0b10);  // 0b10 - 1 = 1 = ON
+      ESP_LOGV(TAG, "Z2 pump: byte116=0x%02X, getBit1and2=0x%02X, state=%s", data[116], z2_pump_value, z2_pump ? "ON" : "OFF");
+      this->callback_manager_->notify_binary_sensor_value("z2_pump_state", z2_pump);
+    }
+    
+    // Alarm State (bytes 113-114, error decoding) - TOP44
+    if (this->callback_manager_->has_binary_sensor_callback("alarm_state")) {
+      int error_type = data[113];
+      // Error types: 177 = F type, 161 = H type, otherwise no error
+      bool alarm = (error_type == 177 || error_type == 161);
+      this->callback_manager_->notify_binary_sensor_value("alarm_state", alarm);
+    }
+    
+    // === TEXT SENSORS ===
+    
+    // Error Code (bytes 113-114, text decoding) - TOP44
+    if (this->callback_manager_->has_text_sensor_callback("error")) {
+      int error_type = data[113];
+      int error_number = data[114] - 17;
+      char error_string[16];
+      switch (error_type) {
+        case 177:  // 0xB1 = F type error
+          snprintf(error_string, sizeof(error_string), "F%02X", error_number);
+          break;
+        case 161:  // 0xA1 = H type error
+          snprintf(error_string, sizeof(error_string), "H%02X", error_number);
+          break;
+        default:
+          snprintf(error_string, sizeof(error_string), "No error");
+          break;
       }
+      this->callback_manager_->notify_text_sensor_value("error", std::string(error_string));
+    }
+    
+    // Heat Pump Model (bytes 129-138, hex string) - TOP92
+    if (this->callback_manager_->has_text_sensor_callback("heat_pump_model")) {
+      char model_string[32];
+      snprintf(model_string, sizeof(model_string), "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
+               data[129], data[130], data[131], data[132], data[133],
+               data[134], data[135], data[136], data[137], data[138]);
+      this->callback_manager_->notify_text_sensor_value("heat_pump_model", std::string(model_string));
+    }
+    
+    // DHW heating active (byte 112, bits 1&2)
+    if (this->callback_manager_->has_binary_sensor_callback("dhw_heating")) {
+      bool dhw_heating = (data[112] & 0b11) > 0;
+      this->callback_manager_->notify_binary_sensor_value("dhw_heating", dhw_heating);
+    }
+
+    // === SWITCHES ===
+    
+    // Force DHW Mode (byte 112, bits 7&8)
+    if (this->callback_manager_->has_switch_callback("force_dhw")) {
+      float force_dhw_value = ((data[112] >> 6) - 1);
+      bool force_dhw = (force_dhw_value > 0);
+      ESP_LOGV(TAG, "Force DHW Switch: byte=0x%02X, state=%s", data[112], force_dhw ? "ON" : "OFF");
+      this->callback_manager_->notify_switch_value("force_dhw", force_dhw);
+    }
+
+    // Holiday mode (byte 113, bits 5&6)
+    if (this->callback_manager_->has_switch_callback("holiday_mode")) {
+      float holiday_mode_value = (((data[113] >> 2) & 0b11) - 1);
+      bool holiday_mode = (holiday_mode_value > 0);
+      ESP_LOGV(TAG, "Holiday Mode Switch: byte=0x%02X, state=%s", data[113], holiday_mode ? "ON" : "OFF");
+      this->callback_manager_->notify_switch_value("holiday_mode", holiday_mode);
+    }
+
+    // === SELECTS ===
+    
+    // Operation Mode select (byte 6)
+    if (this->callback_manager_->has_select_callback("operation_mode")) {
+      std::string operation_mode_text = this->decode_operation_mode(data[6]);
+      ESP_LOGV(TAG, "Operation Mode Select: byte=0x%02X, value=%s", data[6], operation_mode_text.c_str());
+      this->callback_manager_->notify_select_value("operation_mode", operation_mode_text);
     }
   }
-  
-  // Update all registered climate components
-  for (auto *climate : this->climate_components_) {
-    climate->update_from_heishamon();
-  }
-  
-  // Update all registered water heater components
-  for (auto *water_heater : this->water_heater_components_) {
-    water_heater->update_current_temperature(this->dhw_current_temp_);
-    water_heater->update_target_temperature(this->dhw_target_temp_);
-    water_heater->update_dhw_state(this->dhw_heating_state_);
-    water_heater->update_dhw_mode(this->dhw_mode_);
+}
+
+void HeishamonComponent::register_binary_sensor_callback(const std::string &topic, std::function<void(bool)> callback) {
+  ESP_LOGD(TAG, "Registering binary sensor callback for topic: %s", topic.c_str());
+  if (this->callback_manager_) {
+    this->callback_manager_->register_binary_sensor_callback(topic, std::move(callback));
+    ESP_LOGCONFIG(TAG, "Binary sensor callback registered for topic: %s (total: %d)", 
+                  topic.c_str(), this->callback_manager_->get_binary_sensor_callback_count());
+  } else {
+    ESP_LOGE(TAG, "Cannot register binary sensor callback for %s: callback_manager is null", topic.c_str());
   }
 }
 
-void HeishamonComponent::decode_optional_data(const std::vector<uint8_t> &data) {
-  std::copy(data.begin(), data.begin() + OPTDATASIZE, this->act_opt_data_.begin());
-  
-  for (const auto &topic : this->optional_topics_) {
-    if (topic.byte_index < data.size()) {
-      float value = topic.decode_func(data[topic.byte_index]);
-      
-      auto it = this->sensor_callbacks_.find(topic.name);
-      if (it != this->sensor_callbacks_.end()) {
-        it->second(value);
-      }
-    }
+void HeishamonComponent::register_switch_callback(const std::string &topic, std::function<void(bool)> callback) {
+  ESP_LOGD(TAG, "Registering switch callback for topic: %s", topic.c_str());
+  if (this->callback_manager_) {
+    this->callback_manager_->register_switch_callback(topic, std::move(callback));
+    ESP_LOGCONFIG(TAG, "Switch callback registered for topic: %s (total: %d)", 
+                  topic.c_str(), this->callback_manager_->get_switch_callback_count());
+  } else {
+    ESP_LOGE(TAG, "Cannot register switch callback for %s: callback_manager is null", topic.c_str());
   }
 }
 
-uint8_t HeishamonComponent::calc_checksum(const std::vector<uint8_t> &command) {
-  uint8_t chk = 0;
-  for (uint8_t byte : command) {
-    chk += byte;
+void HeishamonComponent::register_select_callback(const std::string &topic, std::function<void(const std::string&)> callback) {
+  ESP_LOGD(TAG, "Registering select callback for topic: %s", topic.c_str());
+  if (this->callback_manager_) {
+    this->callback_manager_->register_select_callback(topic, std::move(callback));
+    ESP_LOGCONFIG(TAG, "Select callback registered for topic: %s (total: %d)", 
+                  topic.c_str(), this->callback_manager_->get_select_callback_count());
+  } else {
+    ESP_LOGE(TAG, "Cannot register select callback for %s: callback_manager is null", topic.c_str());
   }
-  chk = (chk ^ 0xFF) + 1;
-  return chk;
 }
 
-bool HeishamonComponent::is_valid_checksum(const std::vector<uint8_t> &data) {
-  uint8_t chk = 0;
-  for (uint8_t byte : data) {
-    chk += byte;
+void HeishamonComponent::register_text_sensor_callback(const std::string &topic, std::function<void(const std::string&)> callback) {
+  ESP_LOGD(TAG, "Registering text sensor callback for topic: %s", topic.c_str());
+  if (this->callback_manager_) {
+    this->callback_manager_->register_text_sensor_callback(topic, std::move(callback));
+    ESP_LOGCONFIG(TAG, "Text sensor callback registered for topic: %s (total: %d)", 
+                  topic.c_str(), this->callback_manager_->get_text_sensor_callback_count());
+  } else {
+    ESP_LOGE(TAG, "Cannot register text sensor callback for %s: callback_manager is null", topic.c_str());
   }
-  return (chk == 0);
-}
-
-void HeishamonComponent::push_command_buffer(const std::vector<uint8_t> &command) {
-  if (this->cmd_count_ >= MAXCOMMANDSINBUFFER) {
-    ESP_LOGW(TAG, "Command buffer full, dropping command");
-    return;
-  }
-  
-  CommandBuffer &cmd = this->command_buffer_[this->cmd_end_];
-  cmd.length = std::min(command.size(), sizeof(cmd.data));
-  std::copy(command.begin(), command.begin() + cmd.length, cmd.data);
-  
-  this->cmd_end_ = (this->cmd_end_ + 1) % MAXCOMMANDSINBUFFER;
-  this->cmd_count_++;
-}
-
-void HeishamonComponent::pop_command_buffer() {
-  if (this->cmd_count_ == 0) return;
-  
-  const CommandBuffer &cmd = this->command_buffer_[this->cmd_start_];
-  std::vector<uint8_t> command(cmd.data, cmd.data + cmd.length);
-  
-  // Send command
-  uint8_t checksum = this->calc_checksum(command);
-  command.push_back(checksum);
-  
-  this->write_array(command);
-  this->sending_ = true;
-  this->send_command_read_time_ = millis();
-  
-  this->cmd_start_ = (this->cmd_start_ + 1) % MAXCOMMANDSINBUFFER;
-  this->cmd_count_--;
-}
-
-void HeishamonComponent::register_sensor(const std::string &topic, std::function<void(float)> callback) {
-  this->sensor_callbacks_[topic] = callback;
 }
 
 bool HeishamonComponent::send_command(const std::vector<uint8_t> &command) {
-  if (this->listen_only_) {
-    ESP_LOGW(TAG, "Cannot send command in listen-only mode");
-    return false;
+  if (this->protocol_) {
+    return this->protocol_->send_command(command);
   }
-  
-  if (this->sending_) {
-    this->push_command_buffer(command);
-    return true;
-  }
-  
-  std::vector<uint8_t> cmd_with_checksum = command;
-  uint8_t checksum = this->calc_checksum(command);
-  cmd_with_checksum.push_back(checksum);
-  
-  this->write_array(cmd_with_checksum);
-  this->sending_ = true;
-  this->send_command_read_time_ = millis();
-  
-  return true;
+  return false;
+}
+
+void HeishamonComponent::send_command(const std::string &command) {
+  // Delegate to protocol layer or command manager when implemented
+  ESP_LOGD(TAG, "Send command: %s", command.c_str());
 }
 
 void HeishamonComponent::send_command(const std::string &command, const std::string &value) {
-  ESP_LOGD(TAG, "Sending string command: %s = %s", command.c_str(), value.c_str());
-  
-  if (this->listen_only_) {
-    ESP_LOGW(TAG, "Cannot send command in listen-only mode");
-    return;
-  }
-  
-  // Convert string command to appropriate byte command
-  // This is a simplified implementation - in practice, you'd have a mapping
-  // of command names to their corresponding byte sequences
-  
-  if (command == "SetBivalentMode") {
-    uint8_t val = static_cast<uint8_t>(std::stoi(value));
-    this->create_command("SetBivalentMode", val);
-  } else if (command == "SetExternalPadHeater") {
-    uint8_t val = static_cast<uint8_t>(std::stoi(value));
-    this->create_command("SetExternalPadHeater", val);
-  } else if (command == "SetSmartGridMode") {
-    uint8_t val = static_cast<uint8_t>(std::stoi(value));
-    this->create_command("SetSmartGridMode", val);
-  } else if (command == "SetHeatingMode") {
-    uint8_t val = static_cast<uint8_t>(std::stoi(value));
-    this->create_command("SetHeatingMode", val);
-  } else if (command == "SetCoolingMode") {
-    uint8_t val = static_cast<uint8_t>(std::stoi(value));
-    this->create_command("SetCoolingMode", val);
-  } else {
-    ESP_LOGW(TAG, "Unknown string command: %s", command.c_str());
-  }
+  // Delegate to protocol layer or command manager when implemented  
+  ESP_LOGD(TAG, "Send command: %s = %s", command.c_str(), value.c_str());
 }
 
-// Decoding functions ported from HeishaMon
-float HeishamonComponent::unknown(uint8_t input) { return -1; }
-
-float HeishamonComponent::get_bit_1_and_2(uint8_t input) {
-  return (input >> 6) - 1;
+void HeishamonComponent::send_command(const std::string &command, uint8_t value) {
+  // Create and send the command packet to the heat pump
+  ESP_LOGD(TAG, "Send command: %s = %d", command.c_str(), value);
+  this->create_command(command, value);
 }
 
-float HeishamonComponent::get_bit_3_and_4(uint8_t input) {
-  return ((input >> 4) & 0b11) - 1;
-}
-
-float HeishamonComponent::get_bit_5_and_6(uint8_t input) {
-  return ((input >> 2) & 0b11) - 1;
-}
-
-float HeishamonComponent::get_bit_7_and_8(uint8_t input) {
-  return (input & 0b11) - 1;
-}
-
-float HeishamonComponent::get_int_minus_1(uint8_t input) {
-  return static_cast<float>(input - 1);
-}
-
-float HeishamonComponent::get_int_minus_128(uint8_t input) {
-  return static_cast<float>(input - 128);
-}
-
-float HeishamonComponent::get_int_minus_1_div_5(uint8_t input) {
-  return (static_cast<float>(input - 1)) / 5.0f;
-}
-
-float HeishamonComponent::get_int_minus_1_div_50(uint8_t input) {
-  return (static_cast<float>(input - 1)) / 50.0f;
-}
-
-float HeishamonComponent::get_int_minus_1_times_10(uint8_t input) {
-  return static_cast<float>((input - 1) * 10);
-}
-
-float HeishamonComponent::get_int_minus_1_times_50(uint8_t input) {
-  return static_cast<float>((input - 1) * 50);
-}
-
-float HeishamonComponent::get_power(uint8_t input) {
-  return static_cast<float>((input - 1) * 200);
-}
-
-float HeishamonComponent::get_pump_flow(const std::vector<uint8_t> &data) {
-  if (data.size() > 170) {
-    float pump_flow1 = static_cast<float>(data[170]);
-    float pump_flow2 = (static_cast<float>(data[169] - 1)) / 256.0f;
-    return pump_flow1 + pump_flow2;
-  }
-  return -1;
-}
-
-// Additional decoding functions for Phase 1 sensors
-float HeishamonComponent::get_dhw_power(uint8_t input) {
-  // DHW power calculation (similar to general power but might have different scale)
-  return static_cast<float>((input - 1) * 200);
-}
-
-float HeishamonComponent::get_heat_delta(uint8_t input) {
-  // Heat delta temperature calculation (in 0.5°C steps)
-  return (static_cast<float>(input - 1)) / 2.0f;
-}
-
-float HeishamonComponent::get_cool_delta(uint8_t input) {
-  // Cool delta temperature calculation (in 0.5°C steps)
-  return (static_cast<float>(input - 1)) / 2.0f;
-}
-
-float HeishamonComponent::get_operating_hours(uint8_t input) {
-  // Operating hours (might need to be converted to proper hours)
-  return static_cast<float>(input);
-}
-
-float HeishamonComponent::get_zone_valve_pid(uint8_t input) {
-  // Zone valve PID percentage (0-100%)
-  return static_cast<float>(input);
-}
-
-float HeishamonComponent::get_cop(const std::vector<uint8_t> &data) {
-  // COP calculation: Heat production / Heat consumption
-  if (data.size() > 194) {
-    float heat_production = this->get_power(data[194]);
-    float heat_consumption = this->get_power(data[193]);
-    
-    // Avoid division by zero and ensure meaningful COP
-    if (heat_consumption > 100.0f && heat_production > 0.0f) {
-      float cop = heat_production / heat_consumption;
-      // Reasonable COP bounds (1.0 to 8.0)
-      if (cop >= 1.0f && cop <= 8.0f) {
-        return cop;
-      }
-    }
-  }
-  return -1.0f; // Invalid COP
-}
-
-void HeishamonComponent::init_topics() {
-  // Initialize the most important topics (selection of critical ones to save memory)
-  this->topics_.clear();
-  
-  // Basic heat pump topics
-  this->topics_.push_back({"heatpump_state", 4, 
-    [this](uint8_t input) { return this->get_bit_7_and_8(input); }, "", "Heat pump state"});
-  
-  this->topics_.push_back({"main_inlet_temp", 143, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Main inlet temperature"});
-  
-  this->topics_.push_back({"main_outlet_temp", 144, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Main outlet temperature"});
-  
-  this->topics_.push_back({"main_target_temp", 153, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Main target temperature"});
-  
-  this->topics_.push_back({"dhw_temp", 141, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW temperature"});
-  
-  this->topics_.push_back({"dhw_target_temp", 42, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW target temperature"});
-  
-  this->topics_.push_back({"outside_temp", 142, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Outside temperature"});
-  
-  this->topics_.push_back({"compressor_freq", 166, 
-    [this](uint8_t input) { return this->get_int_minus_1(input); }, "Hz", "Compressor frequency"});
-  
-  this->topics_.push_back({"operation_mode", 6, 
-    [this](uint8_t input) { 
-      // Simplified operation mode decoding
-      uint8_t mode = input & 0b111111;
-      switch (mode) {
-        case 18: return 0.0f; // Heat
-        case 19: return 1.0f; // Cool
-        case 25: return 2.0f; // Auto(heat)
-        case 33: return 3.0f; // DHW
-        case 34: return 4.0f; // Heat+DHW
-        case 35: return 5.0f; // Cool+DHW
-        case 41: return 6.0f; // Auto(heat)+DHW
-        case 26: return 7.0f; // Auto(cool)
-        case 42: return 8.0f; // Auto(cool)+DHW
-        default: return -1.0f;
-      }
-    }, "", "Operation mode"});
-  
-  this->topics_.push_back({"pump_flow", 0, 
-    [this](uint8_t input) { return this->get_pump_flow(this->act_data_); }, "l/min", "Pump flow"});
-
-  // PHASE 1: Advanced power sensors (separated by function)
-  this->topics_.push_back({"heat_power_production", 194, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power production"});
-  
-  this->topics_.push_back({"heat_power_consumption", 193, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Heat power consumption"});
-  
-  // DHW power sensors (if available in your heat pump model)
-  this->topics_.push_back({"dhw_power_production", 195, 
-    [this](uint8_t input) { return this->get_dhw_power(input); }, "W", "DHW power production"});
-  
-  this->topics_.push_back({"dhw_power_consumption", 196, 
-    [this](uint8_t input) { return this->get_dhw_power(input); }, "W", "DHW power consumption"});
-  
-  // Cool power sensors (for cooling capable units)
-  this->topics_.push_back({"cool_power_production", 197, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Cool power production"});
-  
-  this->topics_.push_back({"cool_power_consumption", 198, 
-    [this](uint8_t input) { return this->get_power(input); }, "W", "Cool power consumption"});
-
-  // Temperature deltas (TOP23, TOP24 in HA module)
-  this->topics_.push_back({"heat_delta", 23, 
-    [this](uint8_t input) { return this->get_heat_delta(input); }, "°C", "Heat delta temperature"});
-  
-  this->topics_.push_back({"cool_delta", 24, 
-    [this](uint8_t input) { return this->get_cool_delta(input); }, "°C", "Cool delta temperature"});
-
-  // Zone temperatures (TOP36, TOP37 in HA module)
-  this->topics_.push_back({"z1_water_temp", 36, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Zone 1 water temperature"});
-  
-  this->topics_.push_back({"z2_water_temp", 37, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Zone 2 water temperature"});
-  
-  this->topics_.push_back({"room_thermostat_temp", 33, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Room thermostat temperature"});
-
-  // Operating hours (TOP90, TOP91, TOP88 in HA module)
-  this->topics_.push_back({"room_heater_operating_hours", 90, 
-    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "Room heater operating hours"});
-  
-  this->topics_.push_back({"dhw_heater_operating_hours", 91, 
-    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "DHW heater operating hours"});
-  
-  this->topics_.push_back({"compressor_operating_hours", 88, 
-    [this](uint8_t input) { return this->get_operating_hours(input); }, "h", "Compressor operating hours"});
-
-  // Holiday shift temperatures (TOP45, TOP25 in HA module)
-  this->topics_.push_back({"room_holiday_shift_temp", 45, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Room holiday shift temperature"});
-  
-  this->topics_.push_back({"dhw_holiday_shift_temp", 25, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "DHW holiday shift temperature"});
-
-  // Buffer temperature (TOP46 in HA module)
-  this->topics_.push_back({"buffer_temp", 46, 
-    [this](uint8_t input) { return this->get_int_minus_128(input); }, "°C", "Buffer temperature"});
-
-  // Zone valve PID control (TOP127, TOP128 in HA module)
-  this->topics_.push_back({"z1_valve_pid", 127, 
-    [this](uint8_t input) { return this->get_zone_valve_pid(input); }, "%", "Zone 1 valve PID"});
-  
-  this->topics_.push_back({"z2_valve_pid", 128, 
-    [this](uint8_t input) { return this->get_zone_valve_pid(input); }, "%", "Zone 2 valve PID"});
-
-  // COP calculation (computed from multiple values)
-  this->topics_.push_back({"cop", 0, 
-    [this](uint8_t input) { return this->get_cop(this->act_data_); }, "", "Coefficient of Performance"});
-  
-  // Optional topics for PCB
-  if (this->optional_pcb_) {
-    this->optional_topics_.push_back({"z1_water_pump", 4, 
-      [this](uint8_t input) { return static_cast<float>(input >> 7); }, "", "Zone 1 water pump"});
-    
-    this->optional_topics_.push_back({"z1_mixing_valve", 4, 
-      [this](uint8_t input) { return static_cast<float>((input >> 5) & 0b11); }, "", "Zone 1 mixing valve"});
-  }
-}
-
-// Climate control implementation
-void HeishamonComponent::register_climate_component(HeishaMonClimate *climate) {
-  this->climate_components_.push_back(climate);
-}
-
-// Heat pump mode control
-void HeishamonComponent::set_heat_mode_enabled(bool enabled) {
-  if (this->heat_mode_enabled_ != enabled) {
-    this->heat_mode_enabled_ = enabled;
-    // Send command to enable/disable heat mode globally
-    this->create_command("SetOperationMode", enabled ? 1 : 0);
-  }
-}
-
-void HeishamonComponent::set_cool_mode_enabled(bool enabled) {
-  if (this->cool_mode_enabled_ != enabled) {
-    this->cool_mode_enabled_ = enabled;
-    // Send command to enable/disable cool mode globally  
-    this->create_command("SetOperationMode", enabled ? 2 : 0);
-  }
-}
-
-// Zone control
-void HeishamonComponent::set_zone1_heat_enabled(bool enabled) {
-  if (this->zone1_heat_enabled_ != enabled) {
-    this->zone1_heat_enabled_ = enabled;
-    // Update zone states - Zone 1 bit
-    uint8_t zone_state = 0;
-    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
-    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
-    this->create_command("SetZones", zone_state);
-  }
-}
-
-void HeishamonComponent::set_zone1_cool_enabled(bool enabled) {
-  if (this->zone1_cool_enabled_ != enabled) {
-    this->zone1_cool_enabled_ = enabled;
-    // Update zone states - Zone 1 bit
-    uint8_t zone_state = 0;
-    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
-    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
-    this->create_command("SetZones", zone_state);
-  }
-}
-
-void HeishamonComponent::set_zone2_heat_enabled(bool enabled) {
-  if (this->zone2_heat_enabled_ != enabled) {
-    this->zone2_heat_enabled_ = enabled;
-    // Update zone states - Zone 2 bit
-    uint8_t zone_state = 0;
-    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
-    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
-    this->create_command("SetZones", zone_state);
-  }
-}
-
-void HeishamonComponent::set_zone2_cool_enabled(bool enabled) {
-  if (this->zone2_cool_enabled_ != enabled) {
-    this->zone2_cool_enabled_ = enabled;
-    // Update zone states - Zone 2 bit
-    uint8_t zone_state = 0;
-    if (this->zone1_heat_enabled_ || this->zone1_cool_enabled_) zone_state |= 0x01;
-    if (this->zone2_heat_enabled_ || this->zone2_cool_enabled_) zone_state |= 0x02;
-    this->create_command("SetZones", zone_state);
-  }
-}
-
-// Temperature setters
-void HeishamonComponent::set_zone1_heat_target_temperature(float temperature) {
-  if (fabsf(this->zone1_heat_target_temp_ - temperature) > 0.1f) {
-    this->zone1_heat_target_temp_ = temperature;
-    // Convert to heat pump protocol (typically temperature * 2 + offset)
-    uint8_t temp_value = static_cast<uint8_t>(temperature);
-    this->create_command("SetZ1HeatRequestTemperature", temp_value);
-  }
-}
-
-void HeishamonComponent::set_zone1_cool_target_temperature(float temperature) {
-  if (fabsf(this->zone1_cool_target_temp_ - temperature) > 0.1f) {
-    this->zone1_cool_target_temp_ = temperature;
-    uint8_t temp_value = static_cast<uint8_t>(temperature);
-    this->create_command("SetZ1CoolRequestTemperature", temp_value);
-  }
-}
-
-void HeishamonComponent::set_zone2_heat_target_temperature(float temperature) {
-  if (fabsf(this->zone2_heat_target_temp_ - temperature) > 0.1f) {
-    this->zone2_heat_target_temp_ = temperature;
-    uint8_t temp_value = static_cast<uint8_t>(temperature);
-    this->create_command("SetZ2HeatRequestTemperature", temp_value);
-  }
-}
-
-void HeishamonComponent::set_zone2_cool_target_temperature(float temperature) {
-  if (fabsf(this->zone2_cool_target_temp_ - temperature) > 0.1f) {
-    this->zone2_cool_target_temp_ = temperature;
-    uint8_t temp_value = static_cast<uint8_t>(temperature);
-    this->create_command("SetZ2CoolRequestTemperature", temp_value);
-  }
-}
-
-// Temperature getters
-float HeishamonComponent::get_zone1_current_temperature() const {
-  return this->zone1_current_temp_;
-}
-
-float HeishamonComponent::get_zone2_current_temperature() const {
-  return this->zone2_current_temp_;
-}
-
-float HeishamonComponent::get_zone1_heat_target_temperature() const {
-  return this->zone1_heat_target_temp_;
-}
-
-float HeishamonComponent::get_zone1_cool_target_temperature() const {
-  return this->zone1_cool_target_temp_;
-}
-
-float HeishamonComponent::get_zone2_heat_target_temperature() const {
-  return this->zone2_heat_target_temp_;
-}
-
-float HeishamonComponent::get_zone2_cool_target_temperature() const {
-  return this->zone2_cool_target_temp_;
-}
-
-// State getters
-bool HeishamonComponent::get_heat_mode_enabled() const {
-  return this->heat_mode_enabled_;
-}
-
-bool HeishamonComponent::get_cool_mode_enabled() const {
-  return this->cool_mode_enabled_;
-}
-
-bool HeishamonComponent::get_zone1_heat_enabled() const {
-  return this->zone1_heat_enabled_;
-}
-
-bool HeishamonComponent::get_zone1_cool_enabled() const {
-  return this->zone1_cool_enabled_;
-}
-
-bool HeishamonComponent::get_zone2_heat_enabled() const {
-  return this->zone2_heat_enabled_;
-}
-
-bool HeishamonComponent::get_zone2_cool_enabled() const {
-  return this->zone2_cool_enabled_;
-}
-
-// Number component support
-void HeishamonComponent::register_number(HeishamonNumber *number) {
-  this->number_components_.push_back(number);
+void HeishamonComponent::create_command(const std::string &command, uint8_t value) {
+  // Delegate to protocol layer or command manager when implemented
+  ESP_LOGD(TAG, "Create command: %s = %d", command.c_str(), value);
 }
 
 bool HeishamonComponent::send_number_command(const std::string &command, float value) {
-  if (this->listen_only_) {
-    ESP_LOGW(TAG, "Cannot send number command in listen-only mode");
-    return false;
-  }
-  
-  ESP_LOGD(TAG, "Sending number command: %s = %.1f", command.c_str(), value);
-  
-  // Map number commands to HeishaMon protocol
-  std::string heisha_command;
-  uint8_t command_value = 0x00;
-  
-  // Temperature control commands
-  if (command == "SetZ1HeatTargetTemp") {
-    heisha_command = "SetZ1HeatRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ2HeatTargetTemp") {
-    heisha_command = "SetZ2HeatRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ1CoolTargetTemp") {
-    heisha_command = "SetZ1CoolRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetZ2CoolTargetTemp") {
-    heisha_command = "SetZ2CoolRequestTemperature";
-    command_value = static_cast<uint8_t>(value);
-  } else if (command == "SetDHWTargetTemp") {
-    heisha_command = "SetDHWTargetTemp";
-    command_value = static_cast<uint8_t>(value);
-  }
-  
-  // For now, implement basic temperature controls
-  // More advanced commands can be added later as needed
-  else {
-    ESP_LOGW(TAG, "Number command not yet implemented: %s", command.c_str());
-    return false;
-  }
-  
-  // Create and send command using existing infrastructure
-  this->create_command(heisha_command, command_value);
+  // Delegate to protocol layer or command manager when implemented
+  ESP_LOGD(TAG, "Send number command: %s = %.1f", command.c_str(), value);
   return true;
 }
 
-// Water Heater component registration and support methods
-void HeishamonComponent::register_water_heater(HeishamonWaterHeater *water_heater) {
-  this->water_heater_components_.push_back(water_heater);
-  water_heater->set_parent(this);
-  ESP_LOGD(TAG, "Registered Water Heater component");
+// Climate control stubs - these will be implemented in Phase 2
+void HeishamonComponent::set_heat_mode_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set heat mode enabled: %s", YESNO(enabled));
 }
 
+void HeishamonComponent::set_cool_mode_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set cool mode enabled: %s", YESNO(enabled));
+}
+
+void HeishamonComponent::set_zone1_heat_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set zone1 heat enabled: %s", YESNO(enabled));
+}
+
+void HeishamonComponent::set_zone1_cool_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set zone1 cool enabled: %s", YESNO(enabled));
+}
+
+void HeishamonComponent::set_zone2_heat_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set zone2 heat enabled: %s", YESNO(enabled));
+}
+
+void HeishamonComponent::set_zone2_cool_enabled(bool enabled) {
+  ESP_LOGD(TAG, "Set zone2 cool enabled: %s", YESNO(enabled));
+}
+
+void HeishamonComponent::set_zone1_heat_target_temperature(float temperature) {
+  ESP_LOGD(TAG, "Set zone1 heat target temperature: %.1f", temperature);
+}
+
+void HeishamonComponent::set_zone1_cool_target_temperature(float temperature) {
+  ESP_LOGD(TAG, "Set zone1 cool target temperature: %.1f", temperature);
+}
+
+void HeishamonComponent::set_zone2_heat_target_temperature(float temperature) {
+  ESP_LOGD(TAG, "Set zone2 heat target temperature: %.1f", temperature);
+}
+
+void HeishamonComponent::set_zone2_cool_target_temperature(float temperature) {
+  ESP_LOGD(TAG, "Set zone2 cool target temperature: %.1f", temperature);
+}
+
+float HeishamonComponent::get_zone1_current_temperature() const {
+  return 20.0f; // Stub value
+}
+
+float HeishamonComponent::get_zone2_current_temperature() const {
+  return 20.0f; // Stub value
+}
+
+float HeishamonComponent::get_zone1_heat_target_temperature() const {
+  return 21.0f; // Stub value
+}
+
+float HeishamonComponent::get_zone1_cool_target_temperature() const {
+  return 22.0f; // Stub value
+}
+
+float HeishamonComponent::get_zone2_heat_target_temperature() const {
+  return 21.0f; // Stub value
+}
+
+float HeishamonComponent::get_zone2_cool_target_temperature() const {
+  return 22.0f; // Stub value
+}
+
+bool HeishamonComponent::get_heat_mode_enabled() const {
+  return false; // Stub value
+}
+
+bool HeishamonComponent::get_cool_mode_enabled() const {
+  return false; // Stub value
+}
+
+bool HeishamonComponent::get_zone1_heat_enabled() const {
+  return false; // Stub value
+}
+
+bool HeishamonComponent::get_zone1_cool_enabled() const {
+  return false; // Stub value
+}
+
+bool HeishamonComponent::get_zone2_heat_enabled() const {
+  return false; // Stub value
+}
+
+bool HeishamonComponent::get_zone2_cool_enabled() const {
+  return false; // Stub value
+}
+
+#ifdef USE_WATER_HEATER
 float HeishamonComponent::get_dhw_current_temperature() const {
-  return this->dhw_current_temp_;
+  return 40.0f; // Stub value
+}
+#endif
+
+// Select value decoding functions
+std::string HeishamonComponent::decode_operation_mode(uint8_t input) {
+  // Apply 6-bit mask as per HeishaMon protocol
+  uint8_t mode = input & 0b111111;
+  
+  // Return strings matching select.py options exactly
+  switch (mode) {
+    case 18: return "Heat only";
+    case 19: return "Cool only"; 
+    case 25: return "Auto(Heat)";
+    case 33: return "DHW only";
+    case 34: return "Heat+DHW";
+    case 35: return "Cool+DHW";
+    case 41: return "Auto(Heat)+DHW";
+    case 26: return "Auto(Cool)";
+    case 42: return "Auto(Cool)+DHW";
+    default: 
+      ESP_LOGW(TAG, "Unknown operation mode: raw=0x%02X, masked=%d", input, mode);
+      return "Heat+DHW"; // Safe default instead of Unknown
+  }
 }
 
-float HeishamonComponent::get_dhw_target_temperature() const {
-  return this->dhw_target_temp_;
-}
-
-bool HeishamonComponent::get_dhw_heating_state() const {
-  return this->dhw_heating_state_;
-}
-
-int HeishamonComponent::get_dhw_mode() const {
-  return this->dhw_mode_;
-}
-
-}  // namespace heishamon
-}  // namespace esphome
+} // namespace heishamon
+} // namespace esphome

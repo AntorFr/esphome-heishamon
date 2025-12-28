@@ -2,25 +2,12 @@
 
 #include "esphome/core/component.h"
 #include "esphome/components/sensor/sensor.h"
-#include "heishamon.h"
 
 namespace esphome {
 namespace heishamon {
 
-class HeishamonSensor : public sensor::Sensor, public Component {
- public:
-  void setup() override;
-  void dump_config() override;
-  float get_setup_priority() const override { return setup_priority::DATA; }
-
-  void set_parent(HeishamonComponent *parent) { this->parent_ = parent; }
-  void set_topic(const std::string &topic) { this->topic_ = topic; }
-
- protected:
-  HeishamonComponent *parent_;
-  std::string topic_;
-  
-  void on_data_received(float value);
+class HeishamonSensor : public sensor::Sensor {
+  // Simple sensor - no additional methods needed
 };
 
 }  // namespace heishamon

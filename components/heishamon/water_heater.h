@@ -1,4 +1,6 @@
 #pragma once
+#include "esphome/core/defines.h"
+#ifdef USE_WATER_HEATER
 
 #include "esphome/core/component.h"
 #include "esphome/components/climate/climate.h"
@@ -42,3 +44,4 @@ class HeishamonWaterHeater : public climate::Climate, public Component {
 
 }  // namespace heishamon
 }  // namespace esphome
+#endif
