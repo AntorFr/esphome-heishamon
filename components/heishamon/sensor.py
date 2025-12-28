@@ -123,27 +123,45 @@ HEISHA_TOPICS = {
         "icon": "mdi:pipe"
     },
     
-    # TOP35 - Room Thermostat Temperature
+    # TOP33 - Room Thermostat Temperature
     "room_thermostat_temp": {
         "name": "Room Thermostat Temperature",
-        "topic_id": 35,
+        "topic_id": 33,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:home-thermometer"
     },
     
-    # TOP42 - Zone 1 Water Temperature
+    # TOP36 - Zone 1 Water Temperature
     "z1_water_temp": {
         "name": "Zone 1 Water Temperature",
+        "topic_id": 36,
+        "unit": UNIT_CELSIUS, 
+        "device_class": DEVICE_CLASS_TEMPERATURE,
+        "icon": "mdi:thermometer-water"
+    },
+    
+    # TOP37 - Zone 2 Water Temperature
+    "z2_water_temp": {
+        "name": "Zone 2 Water Temperature",
+        "topic_id": 37,
+        "unit": UNIT_CELSIUS, 
+        "device_class": DEVICE_CLASS_TEMPERATURE,
+        "icon": "mdi:thermometer-water"
+    },
+    
+    # TOP42 - Zone 1 Water Target Temperature
+    "z1_water_target_temp": {
+        "name": "Zone 1 Water Target Temperature",
         "topic_id": 42,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:thermometer-water"
     },
     
-    # TOP43 - Zone 2 Water Temperature
-    "z2_water_temp": {
-        "name": "Zone 2 Water Temperature",
+    # TOP43 - Zone 2 Water Target Temperature
+    "z2_water_target_temp": {
+        "name": "Zone 2 Water Target Temperature",
         "topic_id": 43,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,

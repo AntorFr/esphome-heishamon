@@ -125,17 +125,27 @@ sensor:
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "room_thermostat_temp"
-    name: "Room Thermostat Temperature (TOP35)"
+    name: "Room Thermostat Temperature (TOP33)"
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "z1_water_temp"
-    name: "Zone 1 Water Temperature (TOP42)"
+    name: "Zone 1 Water Temperature (TOP36)"
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "z2_water_temp"
-    name: "Zone 2 Water Temperature (TOP43)"
+    name: "Zone 2 Water Temperature (TOP37)"
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z1_water_target_temp"
+    name: "Zone 1 Water Target Temperature (TOP42)"
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    topic: "z2_water_target_temp"
+    name: "Zone 2 Water Target Temperature (TOP43)"
 
   - platform: heishamon
     heishamon_id: heisha_main
@@ -288,12 +298,12 @@ sensor:
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "cool_power_production"
-    name: "Cool Power Production"
+    name: "Cool Power Production (XTOP4)"
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "cool_power_consumption"
-    name: "Cool Power Consumption"
+    name: "Cool Power Consumption (XTOP1)"
 
   # ============== OPERATING HOURS & COUNTERS ==============
   - platform: heishamon
