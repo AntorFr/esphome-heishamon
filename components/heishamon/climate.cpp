@@ -97,7 +97,10 @@ void HeishaMonClimate::control(const climate::ClimateCall &call) {
 void HeishaMonClimate::update_from_heishamon() {
   if (this->parent_ == nullptr) return;
   
-  bool state_changed = false;
+  // Store old values to detect changes
+  float old_current_temp = this->current_temperature;
+  float old_target_temp = this->target_temperature;
+  climate::ClimateMode old_mode = this->mode;
   
   // Update current temperature for this zone
   this->update_zone_temperatures();
@@ -106,13 +109,18 @@ void HeishaMonClimate::update_from_heishamon() {
   this->update_zone_states();
   
   // Update HVAC mode based on heat pump state
-  climate::ClimateMode new_mode = this->get_current_hvac_mode();
-  if (new_mode != this->mode) {
-    this->mode = new_mode;
-    state_changed = true;
-  }
+  this->mode = this->get_current_hvac_mode();
   
-  if (state_changed) {
+  // Check if anything changed - handle NAN comparisons properly
+  bool temp_changed = (std::isnan(old_current_temp) != std::isnan(this->current_temperature)) ||
+                      (!std::isnan(this->current_temperature) && fabsf(old_current_temp - this->current_temperature) > 0.1f);
+  bool target_changed = (std::isnan(old_target_temp) != std::isnan(this->target_temperature)) ||
+                        (!std::isnan(this->target_temperature) && fabsf(old_target_temp - this->target_temperature) > 0.1f);
+  bool mode_changed = (old_mode != this->mode);
+  
+  if (temp_changed || target_changed || mode_changed) {
+    ESP_LOGD(TAG, "Zone %d state update: mode=%d, current=%.1f, target=%.1f",
+             this->zone_id_, this->mode, this->current_temperature, this->target_temperature);
     this->publish_state();
   }
 }
@@ -183,13 +191,13 @@ void HeishaMonClimate::update_zone_temperatures() {
     }
   }
   
-  // Update current temperature
-  if (!std::isnan(new_current_temp) && fabsf(new_current_temp - this->current_temperature) > 0.1f) {
+  // Update current temperature if valid
+  if (!std::isnan(new_current_temp)) {
     this->current_temperature = new_current_temp;
   }
   
-  // Update target temperature if different
-  if (!std::isnan(new_target_temp) && fabsf(new_target_temp - this->target_temperature) > 0.1f) {
+  // Update target temperature if valid
+  if (!std::isnan(new_target_temp)) {
     this->target_temperature = new_target_temp;
   }
 }

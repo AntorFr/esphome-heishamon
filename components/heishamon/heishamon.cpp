@@ -925,7 +925,8 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     
     // Zones State (byte 5, bits 5&6) - TOP94 and climate zone tracking
     {
-      uint8_t zones_value = ((data[5] >> 4) & 0b11);  // bits 5&6 = zone state 0/1/2
+      // getBit5and6 = ((input >> 2) & 0b11) - 1, result: 0=Zone1, 1=Zone2, 2=Both
+      uint8_t zones_value = (((data[5] >> 2) & 0b11) - 1);
       
       // Update zone enable states for climate
       // 0 = Zone 1 only, 1 = Zone 2 only, 2 = Both zones
@@ -934,8 +935,8 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       this->zone1_cool_enabled_ = (zones_value == 0 || zones_value == 2) && this->cool_mode_enabled_;
       this->zone2_cool_enabled_ = (zones_value == 1 || zones_value == 2) && this->cool_mode_enabled_;
       
-      ESP_LOGV(TAG, "Zones state: value=%d, z1_heat=%d, z2_heat=%d, z1_cool=%d, z2_cool=%d",
-               zones_value, this->zone1_heat_enabled_, this->zone2_heat_enabled_,
+      ESP_LOGV(TAG, "Zones state: raw=0x%02X, value=%d, z1_heat=%d, z2_heat=%d, z1_cool=%d, z2_cool=%d",
+               data[5], zones_value, this->zone1_heat_enabled_, this->zone2_heat_enabled_,
                this->zone1_cool_enabled_, this->zone2_cool_enabled_);
     }
     
