@@ -28,9 +28,8 @@ void HeishaMonClimate::dump_config() {
 climate::ClimateTraits HeishaMonClimate::traits() {
   auto traits = climate::ClimateTraits();
   
-  // Supported modes
-  traits.set_supports_current_temperature(true);
-  traits.set_supports_two_point_target_temperature(false);
+  // Supported features - use feature flags instead of deprecated methods
+  traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
   
   // Always support OFF mode
   traits.add_supported_mode(climate::CLIMATE_MODE_OFF);
