@@ -64,10 +64,10 @@ static const std::map<std::string, std::map<std::string, uint8_t>> SELECT_VALUE_
         {"Water", 0}, {"Glycol", 1}
     }},
     {"z1_sensor_settings", {
-        {"Water temperature", 1}, {"External thermostat", 2}, {"Internal thermostat", 3}, {"Thermistor", 4}
+        {"Water temperature", 0}, {"External thermostat", 1}, {"Internal thermostat", 2}, {"Thermistor", 3}
     }},
     {"z2_sensor_settings", {
-        {"Water temperature", 1}, {"External thermostat", 2}, {"Internal thermostat", 3}, {"Thermistor", 4}
+        {"Water temperature", 0}, {"External thermostat", 1}, {"Internal thermostat", 2}, {"Thermistor", 3}
     }},
 };
 

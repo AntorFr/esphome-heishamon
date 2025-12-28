@@ -28,7 +28,18 @@ void HeishaMonClimate::dump_config() {
 climate::ClimateTraits HeishaMonClimate::traits() {
   auto traits = climate::ClimateTraits();
   
-  // Supported features - use feature flags instead of deprecated methods
+  // Check if external thermostat is used - if so, we cannot control target temperature
+  bool can_control_temperature = true;
+  if (this->parent_ != nullptr) {
+    ZoneSensorMode sensor_mode = (this->zone_id_ == 1) 
+        ? this->parent_->get_zone1_sensor_mode() 
+        : this->parent_->get_zone2_sensor_mode();
+    
+    // External thermostat means we cannot set target temperature
+    can_control_temperature = (sensor_mode != ZoneSensorMode::EXT_THERMO);
+  }
+  
+  // Supported features - current temperature always supported
   traits.add_feature_flags(climate::CLIMATE_SUPPORTS_CURRENT_TEMPERATURE);
   
   // Always support OFF mode
@@ -42,18 +53,19 @@ climate::ClimateTraits HeishaMonClimate::traits() {
     traits.add_supported_mode(climate::CLIMATE_MODE_COOL);
   }
   
-  // Temperature ranges based on zone type and mode
-  if (this->supports_heat_) {
-    // Heat mode: water temperature control (typically 20-55°C)
-    traits.set_visual_min_temperature(20.0f);
-    traits.set_visual_max_temperature(55.0f);
-  } else if (this->supports_cool_) {
-    // Cool mode: water temperature control (typically 5-25°C)
-    traits.set_visual_min_temperature(5.0f);
-    traits.set_visual_max_temperature(25.0f);
+  // Temperature ranges only if we can control temperature (not external thermostat)
+  if (can_control_temperature) {
+    if (this->supports_heat_) {
+      // Heat mode: water temperature control (typically 20-55°C)
+      traits.set_visual_min_temperature(20.0f);
+      traits.set_visual_max_temperature(55.0f);
+    } else if (this->supports_cool_) {
+      // Cool mode: water temperature control (typically 5-25°C)
+      traits.set_visual_min_temperature(5.0f);
+      traits.set_visual_max_temperature(25.0f);
+    }
+    traits.set_visual_temperature_step(1.0f);
   }
-  
-  traits.set_visual_temperature_step(1.0f);
   
   return traits;
 }
@@ -77,6 +89,18 @@ void HeishaMonClimate::control(const climate::ClimateCall &call) {
   
   // Handle target temperature change
   if (call.get_target_temperature().has_value()) {
+    // Check if we can control temperature (not external thermostat)
+    if (this->parent_ != nullptr) {
+      ZoneSensorMode sensor_mode = (this->zone_id_ == 1) 
+          ? this->parent_->get_zone1_sensor_mode() 
+          : this->parent_->get_zone2_sensor_mode();
+      
+      if (sensor_mode == ZoneSensorMode::EXT_THERMO) {
+        ESP_LOGW(TAG, "Zone %d: Cannot set target temperature - external thermostat is used", this->zone_id_);
+        return;
+      }
+    }
+    
     float new_target = *call.get_target_temperature();
     ESP_LOGD(TAG, "Zone %d target temperature: %.1f°C", this->zone_id_, new_target);
     

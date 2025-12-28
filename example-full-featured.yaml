@@ -634,6 +634,16 @@ select:
     type: "three_way_valve"
     name: "3-Way Valve State (TOP20)"
 
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "z1_sensor_settings"
+    name: "Zone 1 Sensor Settings (TOP112)"
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "z2_sensor_settings"
+    name: "Zone 2 Sensor Settings (TOP111)"
+
 # =============================================================================
 # NUMBERS - Temperature setpoints and control parameters (all are config)
 # =============================================================================

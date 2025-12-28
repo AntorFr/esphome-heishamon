@@ -940,6 +940,34 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
                this->zone1_cool_enabled_, this->zone2_cool_enabled_);
     }
     
+    // Zone Sensor Settings (byte 22) - TOP111 and TOP112
+    // getSecondByte = (input & 0b1111) - 1 for Zone 1
+    // getFirstByte = (input >> 4) - 1 for Zone 2
+    // Values: 0=WATER, 1=EXTERNAL, 2=INTERNAL, 3=THERMISTOR
+    {
+      uint8_t z1_sensor = (data[22] & 0b1111) - 1;
+      uint8_t z2_sensor = (data[22] >> 4) - 1;
+      
+      if (z1_sensor <= 3) {
+        this->zone1_sensor_mode_ = static_cast<ZoneSensorMode>(z1_sensor);
+        // Notify select callback
+        static const char* sensor_mode_names[] = {"Water temperature", "External thermostat", "Internal thermostat", "Thermistor"};
+        if (this->callback_manager_) {
+          this->callback_manager_->notify_select_value("z1_sensor_settings", sensor_mode_names[z1_sensor]);
+        }
+      }
+      if (z2_sensor <= 3) {
+        this->zone2_sensor_mode_ = static_cast<ZoneSensorMode>(z2_sensor);
+        // Notify select callback
+        static const char* sensor_mode_names[] = {"Water temperature", "External thermostat", "Internal thermostat", "Thermistor"};
+        if (this->callback_manager_) {
+          this->callback_manager_->notify_select_value("z2_sensor_settings", sensor_mode_names[z2_sensor]);
+        }
+      }
+      
+      ESP_LOGV(TAG, "Zone sensor modes: raw=0x%02X, z1=%d, z2=%d", data[22], z1_sensor, z2_sensor);
+    }
+    
     // === NOTIFY CLIMATE COMPONENTS ===
 #ifdef USE_CLIMATE
     for (auto *climate : this->climate_components_) {

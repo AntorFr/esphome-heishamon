@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <functional>
 
 // Conditional includes for optional components
 #ifdef USE_CLIMATE
@@ -42,6 +43,14 @@ struct TopicData {
   std::string topic;
   float value;
   bool valid;
+};
+
+// Zone Sensor Mode enum (from TOP111/TOP112)
+enum class ZoneSensorMode : uint8_t {
+  WATER = 0,
+  EXT_THERMO = 1,
+  INT_THERMO = 2,
+  THERMISTOR = 3
 };
 
 class HeishamonComponent : public Component, public uart::UARTDevice {
@@ -111,6 +120,10 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   bool get_zone1_cool_enabled() const;
   bool get_zone2_heat_enabled() const;
   bool get_zone2_cool_enabled() const;
+  
+  // Zone sensor mode getters
+  ZoneSensorMode get_zone1_sensor_mode() const { return this->zone1_sensor_mode_; }
+  ZoneSensorMode get_zone2_sensor_mode() const { return this->zone2_sensor_mode_; }
   
   // Optional component registration - only defined if components are used
 #ifdef USE_CLIMATE
@@ -183,6 +196,10 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   float dhw_target_temp_{45.0f};
   bool dhw_heating_state_{false};
   int dhw_mode_{0};
+
+  // Zone sensor modes (TOP111/TOP112)
+  ZoneSensorMode zone1_sensor_mode_{ZoneSensorMode::WATER};
+  ZoneSensorMode zone2_sensor_mode_{ZoneSensorMode::WATER};
 
   // Decoding and data processing
   void decode_heatpump_data(const std::vector<uint8_t> &data);
