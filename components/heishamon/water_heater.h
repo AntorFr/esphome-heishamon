@@ -13,6 +13,13 @@ namespace heishamon {
 
 class HeishamonComponent;
 
+// DHW operating mode presets
+enum class DHWOperatingMode : uint8_t {
+  NORMAL = 0,       // Normal/Standard mode
+  ECO = 1,          // Eco mode (energy saving)
+  POWERFUL = 2,     // Powerful/Performance mode
+};
+
 // DHW (Domestic Hot Water) implemented as Climate until ESPHome supports water_heater
 class HeishamonWaterHeater : public climate::Climate, public Component {
  public:
@@ -35,11 +42,21 @@ class HeishamonWaterHeater : public climate::Climate, public Component {
   // DHW state tracking
   float target_temperature_{45.0f};
   bool dhw_heating_{false};
-  int dhw_mode_{0};  // 0=Off, 1=On, 2=Auto (schedule)
+  DHWOperatingMode dhw_operating_mode_{DHWOperatingMode::NORMAL};
+  bool force_dhw_{false};  // Force DHW active state
+  
+  // Custom preset names
+  static const char* PRESET_NORMAL;
+  static const char* PRESET_ECO;
+  static const char* PRESET_POWERFUL;
   
   // Private methods
   void send_target_temperature_();
-  void send_dhw_mode_();
+  void send_dhw_operating_mode_();
+  
+  // Helper to convert mode to preset string
+  std::string mode_to_preset_string_(DHWOperatingMode mode);
+  DHWOperatingMode preset_string_to_mode_(const std::string &preset);
 };
 
 }  // namespace heishamon

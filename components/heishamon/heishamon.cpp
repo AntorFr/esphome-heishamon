@@ -144,6 +144,13 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       }
     }
     
+    // DHW operating mode (byte 115): 0=Normal, 1=Eco, 2=Powerful
+    {
+      int dhw_mode = data[115] & 0x03;  // Lower 2 bits
+      this->dhw_mode_ = dhw_mode;  // Store for water heater component
+      ESP_LOGV(TAG, "DHW operating mode: byte=0x%02X, mode=%d", data[115], dhw_mode);
+    }
+    
     // Outside temperature (byte 142: temperature - 128)  
     if (this->callback_manager_->has_sensor_callback("outside_temp")) {
       float outside_temp = static_cast<float>(data[142] - 128);
