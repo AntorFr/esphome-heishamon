@@ -768,7 +768,7 @@ HEISHA_TOPICS = {
     "pump_duty": {
         "name": "Pump Duty",
         "topic_id": 93,
-        "unit": UNIT_PERCENT, 
+        "unit": "", 
         "device_class": None,
         "icon": "mdi:pump"
     },
@@ -777,7 +777,7 @@ HEISHA_TOPICS = {
     "max_pump_duty": {
         "name": "Max Pump Duty",
         "topic_id": 95,
-        "unit": UNIT_PERCENT, 
+        "unit": "", 
         "device_class": None,
         "icon": "mdi:pump"
     },

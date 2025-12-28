@@ -756,4 +756,4 @@ switch:
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "quiet_mode"
-    name: "Quiet Mode Switch (SET14)"
+    name: "Quiet Mode Switch (SET3/TOP18)"
