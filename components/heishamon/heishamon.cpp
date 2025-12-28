@@ -497,6 +497,12 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     
     // === AUTO MODE OUTDOOR TEMPERATURES ===
     
+    // Heating Off Outdoor Temp (byte 83: value - 128) - TOP77
+    if (this->callback_manager_->has_sensor_callback("heating_off_outdoor_temp")) {
+      float heating_off_outdoor_temp = static_cast<float>(static_cast<int8_t>(data[83] - 128));
+      this->callback_manager_->notify_sensor_value("heating_off_outdoor_temp", heating_off_outdoor_temp);
+    }
+    
     // Heater On Outdoor Temp (byte 85: value - 128) - TOP78
     if (this->callback_manager_->has_sensor_callback("heater_on_outdoor_temp")) {
       float heater_on_outdoor_temp = static_cast<float>(static_cast<int8_t>(data[85] - 128));

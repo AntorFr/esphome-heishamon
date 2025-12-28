@@ -641,7 +641,7 @@ number:
   - platform: heishamon
     heishamon_id: heisha_main
     type: "dhw_target_temp"
-    name: "DHW Target Temperature (SET11)"
+    name: "DHW Target Temperature (SET11/TOP9)"
     entity_category: config
 
   - platform: heishamon
@@ -751,7 +751,7 @@ switch:
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "force_dhw"
-    name: "Force DHW (SET4)"
+    name: "Force DHW (SET4/TOP2)"
 
   - platform: heishamon
     heishamon_id: heisha_main
