@@ -11,10 +11,10 @@ namespace heishamon {
 static const char *const TAG = "heishamon.water_heater";
 
 void HeishamonWaterHeater::setup() {
-  // Set initial state
+  // Set initial state - DHW is typically always enabled
   this->target_temperature = this->target_temperature_;
   this->current_temperature = NAN;
-  this->mode = climate::CLIMATE_MODE_OFF;
+  this->mode = climate::CLIMATE_MODE_HEAT;  // DHW is normally ON
   this->action = climate::CLIMATE_ACTION_IDLE;
   
   ESP_LOGCONFIG(TAG, "HeishaMon DHW (Water Heater) setup complete");

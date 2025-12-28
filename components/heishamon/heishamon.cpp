@@ -127,15 +127,21 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
   if (this->callback_manager_) {
     
     // DHW target temperature (byte 42: temperature - 128)
-    if (this->callback_manager_->has_sensor_callback("dhw_target_temp")) {
+    {
       float dhw_target_temp = static_cast<float>(data[42] - 128);
-      this->callback_manager_->notify_sensor_value("dhw_target_temp", dhw_target_temp);
+      this->dhw_target_temp_ = dhw_target_temp;  // Store for water heater component
+      if (this->callback_manager_->has_sensor_callback("dhw_target_temp")) {
+        this->callback_manager_->notify_sensor_value("dhw_target_temp", dhw_target_temp);
+      }
     }
     
     // DHW temperature (byte 141: temperature - 128)
-    if (this->callback_manager_->has_sensor_callback("dhw_temp")) {
+    {
       float dhw_temp = static_cast<float>(data[141] - 128);
-      this->callback_manager_->notify_sensor_value("dhw_temp", dhw_temp);
+      this->dhw_current_temp_ = dhw_temp;  // Store for water heater component
+      if (this->callback_manager_->has_sensor_callback("dhw_temp")) {
+        this->callback_manager_->notify_sensor_value("dhw_temp", dhw_temp);
+      }
     }
     
     // Outside temperature (byte 142: temperature - 128)  
@@ -884,19 +890,26 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     }
     
     // DHW heating active (byte 112, bits 1&2)
-    if (this->callback_manager_->has_binary_sensor_callback("dhw_heating")) {
+    {
       bool dhw_heating = (data[112] & 0b11) > 0;
-      this->callback_manager_->notify_binary_sensor_value("dhw_heating", dhw_heating);
+      this->dhw_heating_state_ = dhw_heating;  // Store for water heater component
+      if (this->callback_manager_->has_binary_sensor_callback("dhw_heating")) {
+        this->callback_manager_->notify_binary_sensor_value("dhw_heating", dhw_heating);
+      }
     }
 
     // === SWITCHES ===
     
-    // Force DHW Mode (byte 112, bits 7&8)
-    if (this->callback_manager_->has_switch_callback("force_dhw")) {
+    // Force DHW Mode (byte 112, bits 7&8) 
+    // Also extract DHW operating mode
+    {
       float force_dhw_value = ((data[112] >> 6) - 1);
       bool force_dhw = (force_dhw_value > 0);
+      this->dhw_mode_ = static_cast<int>(force_dhw_value);  // Store for water heater component
       ESP_LOGV(TAG, "Force DHW Switch: byte=0x%02X, state=%s", data[112], force_dhw ? "ON" : "OFF");
-      this->callback_manager_->notify_switch_value("force_dhw", force_dhw);
+      if (this->callback_manager_->has_switch_callback("force_dhw")) {
+        this->callback_manager_->notify_switch_value("force_dhw", force_dhw);
+      }
     }
 
     // Holiday mode (byte 113, bits 5&6)
@@ -1195,5 +1208,5 @@ std::string HeishamonComponent::decode_operation_mode(uint8_t input) {
   }
 }
 
-} // namespace heishamon
-} // namespace esphome
+}  // namespace heishamon
+}  // namespace esphome

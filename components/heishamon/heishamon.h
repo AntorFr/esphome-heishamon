@@ -25,7 +25,7 @@ class HeishaMonClimate;
 #ifdef USE_NUMBER
 class HeishamonNumber;
 #endif
-#ifdef USE_WATER_HEATER
+#ifdef USE_CLIMATE
 class HeishamonWaterHeater;
 #endif
 
