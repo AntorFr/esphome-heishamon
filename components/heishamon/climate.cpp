@@ -1,3 +1,4 @@
+#include "esphome/core/defines.h"
 #ifdef USE_CLIMATE
 #include "climate.h"
 #include "esphome/core/log.h"

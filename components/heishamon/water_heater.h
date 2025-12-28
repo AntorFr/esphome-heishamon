@@ -1,4 +1,5 @@
 #pragma once
+#include "esphome/core/defines.h"
 #ifdef USE_WATER_HEATER
 
 #include "esphome/core/component.h"

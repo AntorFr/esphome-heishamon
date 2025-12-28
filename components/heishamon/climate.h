@@ -1,4 +1,5 @@
 #pragma once
+#include "esphome/core/defines.h"
 #ifdef USE_CLIMATE
 
 #include "esphome/core/component.h"

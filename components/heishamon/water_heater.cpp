@@ -1,3 +1,4 @@
+#include "esphome/core/defines.h"
 #ifdef USE_WATER_HEATER
 #include "water_heater.h"
 #include "heishamon.h"

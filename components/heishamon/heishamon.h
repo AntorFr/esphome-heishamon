@@ -3,6 +3,8 @@
 #include "esphome/core/component.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
+#include "heishamon_protocol.h"
+#include "heishamon_callbacks.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -26,16 +28,6 @@ class HeishamonNumber;
 class HeishamonWaterHeater;
 #endif
 
-// Constants from HeishaMon
-#define DATASIZE 203
-#define OPTDATASIZE 20
-#define MAXDATASIZE 255
-#define INITIALQUERYSIZE 7
-#define PANASONICQUERYSIZE 110
-#define OPTIONALPCBQUERYSIZE 19
-#define SERIALTIMEOUT 2000
-#define MAXCOMMANDSINBUFFER 10
-
 // Structure for topics and their data
 struct HeishaTopic {
   std::string name;
@@ -52,33 +44,40 @@ struct TopicData {
   bool valid;
 };
 
-// Structure for buffered commands
-struct CommandBuffer {
-  uint8_t data[MAXDATASIZE];
-  size_t size;
-  uint32_t timestamp;
-  int retry_count;
-};
-
 class HeishamonComponent : public Component, public uart::UARTDevice {
  public:
+  HeishamonComponent();
   void setup() override;
   void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
 
-    // Configuration
+  // Configuration
   void set_update_interval(uint32_t interval) { this->update_interval_ = interval; }
-  void set_listen_only(bool listen_only) { this->listen_only_ = listen_only; }
-  void set_optional_pcb(bool optional_pcb) { this->optional_pcb_ = optional_pcb; }
+  void set_listen_only(bool listen_only) { 
+    this->listen_only_ = listen_only; 
+    if (this->protocol_) {
+      this->protocol_->set_listen_only(listen_only);
+    }
+  }
+  void set_optional_pcb(bool optional_pcb) { 
+    this->optional_pcb_ = optional_pcb; 
+    if (this->protocol_) {
+      this->protocol_->set_optional_pcb(optional_pcb);
+    }
+  }
 
   // Public functions for sensors
   void register_sensor_callback(const std::string &topic, std::function<void(float)> &&callback);
   void register_binary_sensor_callback(const std::string &topic, std::function<void(bool)> callback);
+  void register_switch_callback(const std::string &topic, std::function<void(bool)> callback);
+  void register_select_callback(const std::string &topic, std::function<void(const std::string&)> callback);
+  void register_text_sensor_callback(const std::string &topic, std::function<void(const std::string&)> callback);
 
   // Command sending functions
   void send_command(const std::string &command);
   void send_command(const std::string &command, const std::string &value);
+  void send_command(const std::string &command, uint8_t value);
   bool send_command(const std::vector<uint8_t> &command);
   void create_command(const std::string &command, uint8_t value);
   bool send_number_command(const std::string &command, float value);
@@ -131,33 +130,24 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
 #endif
 
  protected:
-  uint32_t update_interval_{30000};
+  // Protocol layer data callback
+  void on_protocol_data_received(const std::vector<uint8_t> &data, uint8_t data_type);
+  
+  // Data processing
+  void decode_and_notify_sensors(const std::vector<uint8_t> &data);
+  
+  // Core components
+  HeishamonProtocol *protocol_{nullptr};
+  HeishamonCallbackManager *callback_manager_{nullptr};
+  
+  // Configuration
+  uint32_t update_interval_{15000};
   bool listen_only_{false};
   bool optional_pcb_{false};
   
-  // État de communication
-  bool sending_{false};
-  bool extra_data_available_{false};
-  bool initial_query_sent_{false};
+  // Timing
   uint32_t last_run_time_{0};
   uint32_t last_optional_pcb_time_{0};
-  uint32_t send_command_read_time_{0};
-  
-  // Data buffers
-  std::vector<uint8_t> data_buffer_;
-  std::vector<uint8_t> act_data_;
-  std::vector<uint8_t> act_data_extra_;
-  std::vector<uint8_t> act_opt_data_;
-  
-  // Command buffer
-  std::vector<CommandBuffer> command_buffer_;
-  size_t cmd_start_{0};
-  size_t cmd_end_{0};
-  size_t cmd_count_{0};
-  
-  // Callbacks des sensors
-  std::map<std::string, std::function<void(float)>> sensor_callbacks_;
-  std::map<std::string, std::function<void(bool)>> binary_sensor_callbacks_;
   
   // Optional components - only defined if the component is used
 #ifdef USE_CLIMATE
@@ -193,26 +183,10 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   float dhw_target_temp_{45.0f};
   bool dhw_heating_state_{false};
   int dhw_mode_{0};
-  
-  // Statistiques
-  uint32_t total_reads_{0};
-  uint32_t good_reads_{0};
-  uint32_t bad_crc_reads_{0};
-  uint32_t bad_header_reads_{0};
-  uint32_t timeout_reads_{0};
 
-  // Fonctions privées
-  void init_topics();
-  bool read_serial();
-  void send_initial_query();
-  void send_panasonic_query();
-  void send_optional_pcb_query();
+  // Decoding and data processing
   void decode_heatpump_data(const std::vector<uint8_t> &data);
   void decode_optional_data(const std::vector<uint8_t> &data);
-  uint8_t calc_checksum(const std::vector<uint8_t> &command);
-  bool is_valid_checksum(const std::vector<uint8_t> &data);
-  void push_command_buffer(const std::vector<uint8_t> &command);
-  void pop_command_buffer();
   
   // Decoding functions (ported from HeishaMon)
   float unknown(uint8_t input);
@@ -237,14 +211,12 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   float get_cop(const std::vector<uint8_t> &data);
   float get_zone_valve_pid(uint8_t input);
   
+  // Select value decoding functions
+  std::string decode_operation_mode(uint8_t input);
+  
   // Topics définis
   std::vector<HeishaTopic> topics_;
   std::vector<HeishaTopic> optional_topics_;
-  
-  // Predefined queries (ported from HeishaMon)
-  std::vector<uint8_t> initial_query_;
-  std::vector<uint8_t> panasonic_query_;
-  std::vector<uint8_t> optional_pcb_query_;
 };
 
 }  // namespace heishamon
