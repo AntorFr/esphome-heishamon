@@ -125,21 +125,20 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   ZoneSensorMode get_zone1_sensor_mode() const { return this->zone1_sensor_mode_; }
   ZoneSensorMode get_zone2_sensor_mode() const { return this->zone2_sensor_mode_; }
   
+  // DHW (Domestic Hot Water) getters
+  float get_dhw_current_temperature() const { return this->dhw_current_temp_; }
+  float get_dhw_target_temperature() const { return this->dhw_target_temp_; }
+  bool get_dhw_heating_state() const { return this->dhw_heating_state_; }
+  int get_dhw_mode() const { return this->dhw_mode_; }
+  
   // Optional component registration - only defined if components are used
 #ifdef USE_CLIMATE
   void register_climate_component(class HeishaMonClimate *climate);
+  void register_water_heater(class HeishamonWaterHeater *water_heater);
 #endif
   
 #ifdef USE_NUMBER
   void register_number(class HeishamonNumber *number);
-#endif
-  
-#ifdef USE_WATER_HEATER
-  void register_water_heater(HeishamonWaterHeater *water_heater);
-  float get_dhw_current_temperature() const;
-  float get_dhw_target_temperature() const;
-  bool get_dhw_heating_state() const;
-  int get_dhw_mode() const;
 #endif
 
  protected:
@@ -171,8 +170,8 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   std::vector<class HeishamonNumber *> number_components_;
 #endif
   
-#ifdef USE_WATER_HEATER
-  std::vector<HeishamonWaterHeater *> water_heater_components_;
+#ifdef USE_CLIMATE
+  std::vector<class HeishamonWaterHeater *> water_heater_components_;
 #endif
   
   // Climate state tracking

@@ -1,6 +1,8 @@
 #pragma once
 #include "esphome/core/defines.h"
-#ifdef USE_WATER_HEATER
+// Using USE_CLIMATE until ESPHome supports water_heater natively
+// PR in progress: https://github.com/esphome/esphome/pull/XXXX
+#ifdef USE_CLIMATE
 
 #include "esphome/core/component.h"
 #include "esphome/components/climate/climate.h"
@@ -11,6 +13,7 @@ namespace heishamon {
 
 class HeishamonComponent;
 
+// DHW (Domestic Hot Water) implemented as Climate until ESPHome supports water_heater
 class HeishamonWaterHeater : public climate::Climate, public Component {
  public:
   void setup() override;
@@ -24,10 +27,7 @@ class HeishamonWaterHeater : public climate::Climate, public Component {
   void set_parent(HeishamonComponent *parent) { parent_ = parent; }
   
   // Update methods called by HeishamonComponent
-  void update_target_temperature(float temperature);
-  void update_current_temperature(float temperature);
-  void update_dhw_state(bool heating);
-  void update_dhw_mode(int mode);
+  void update_from_heishamon();
 
  protected:
   HeishamonComponent *parent_{nullptr};
@@ -35,7 +35,7 @@ class HeishamonWaterHeater : public climate::Climate, public Component {
   // DHW state tracking
   float target_temperature_{45.0f};
   bool dhw_heating_{false};
-  int dhw_mode_{0};  // 0=Off, 1=Heat, 2=Auto
+  int dhw_mode_{0};  // 0=Off, 1=On, 2=Auto (schedule)
   
   // Private methods
   void send_target_temperature_();

@@ -56,6 +56,7 @@ async def to_code(config):
     
     # Check if this is a water_heater type
     if config.get(CONF_TYPE) == "water_heater":
+        cg.add(var.set_parent(parent))
         cg.add(parent.register_water_heater(var))
     else:
         # Regular zone climate configuration
