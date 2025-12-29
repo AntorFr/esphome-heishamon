@@ -977,6 +977,8 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       uint8_t quiet_level = (data[7] >> 3) & 0b11111;  // Top 5 bits
       uint8_t power_level = data[7] & 0b111;            // Bottom 3 bits
       
+      ESP_LOGI(TAG, "Byte 7 decode: raw=0x%02X, quiet_level=%d, power_level=%d", data[7], quiet_level, power_level);
+      
       // Decode Quiet Mode (TOP18)
       if (this->callback_manager_->has_select_callback("quiet_mode")) {
         std::string quiet_mode;
@@ -994,7 +996,6 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       
       // Decode Powerful Mode (TOP17)
       if (this->callback_manager_->has_select_callback("powerful_mode")) {
-        ESP_LOGD(TAG, "Powerful Mode (TOP17): byte7=0x%02X, raw_bits=%d", data[7], power_level);
         std::string powerful_mode;
         switch (power_level) {
           case 0b001: powerful_mode = "Off"; break;
