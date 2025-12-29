@@ -279,31 +279,100 @@ sensor:
     heishamon_id: heisha_main
     topic: "heat_power_production"
     name: "Heat Power Production (TOP15)"
+    id: heat_power_production_sensor
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "heat_power_consumption"
     name: "Heat Power Consumption (TOP16)"
+    id: heat_power_consumption_sensor
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "dhw_power_production"
     name: "DHW Power Production (TOP40)"
+    id: dhw_power_production_sensor
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "dhw_power_consumption"
     name: "DHW Power Consumption (TOP41)"
+    id: dhw_power_consumption_sensor
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "cool_power_production"
     name: "Cool Power Production (XTOP4)"
+    id: cool_power_production_sensor
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "cool_power_consumption"
     name: "Cool Power Consumption (XTOP1)"
+    id: cool_power_consumption_sensor
+
+  # ============== ENERGY INTEGRATION (kWh from power sensors) ==============
+  # These sensors integrate power over time to calculate total energy consumption/production
+  
+  # Heat Energy Consumption (integrates TOP16)
+  - platform: integration
+    name: "Heat Energy Consumption"
+    sensor: heat_power_consumption_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+    
+  # Heat Energy Production (integrates TOP15)
+  - platform: integration
+    name: "Heat Energy Production"
+    sensor: heat_power_production_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+
+  # DHW Energy Consumption (integrates TOP41)
+  - platform: integration
+    name: "DHW Energy Consumption"
+    sensor: dhw_power_consumption_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+
+  # DHW Energy Production (integrates TOP40)
+  - platform: integration
+    name: "DHW Energy Production"
+    sensor: dhw_power_production_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+
+  # Cool Energy Consumption (integrates XTOP1)
+  - platform: integration
+    name: "Cool Energy Consumption"
+    sensor: cool_power_consumption_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
+
+  # Cool Energy Production (integrates XTOP4)
+  - platform: integration
+    name: "Cool Energy Production"
+    sensor: cool_power_production_sensor
+    time_unit: h
+    unit_of_measurement: "kWh"
+    state_class: total_increasing
+    device_class: energy
+    accuracy_decimals: 3
 
   # ============== OPERATING HOURS & COUNTERS ==============
   - platform: heishamon
