@@ -994,6 +994,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       
       // Decode Powerful Mode (TOP17)
       if (this->callback_manager_->has_select_callback("powerful_mode")) {
+        ESP_LOGD(TAG, "Powerful Mode (TOP17): byte7=0x%02X, raw_bits=%d", data[7], power_level);
         std::string powerful_mode;
         switch (power_level) {
           case 0b001: powerful_mode = "Off"; break;
@@ -1002,7 +1003,6 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
           case 0b100: powerful_mode = "90 min"; break;
           default: powerful_mode = "Off"; break;  // Safe default
         }
-        ESP_LOGV(TAG, "Powerful Mode (TOP17): byte7=0x%02X, bits=%d, value=%s", data[7], power_level, powerful_mode.c_str());
         this->callback_manager_->notify_select_value("powerful_mode", powerful_mode);
       }
     }
