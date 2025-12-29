@@ -319,7 +319,7 @@ sensor:
     name: "Heat Energy Consumption"
     sensor: heat_power_consumption_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3
@@ -329,7 +329,7 @@ sensor:
     name: "Heat Energy Production"
     sensor: heat_power_production_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3
@@ -339,7 +339,7 @@ sensor:
     name: "DHW Energy Consumption"
     sensor: dhw_power_consumption_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3
@@ -349,7 +349,7 @@ sensor:
     name: "DHW Energy Production"
     sensor: dhw_power_production_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3
@@ -359,7 +359,7 @@ sensor:
     name: "Cool Energy Consumption"
     sensor: cool_power_consumption_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3
@@ -369,7 +369,7 @@ sensor:
     name: "Cool Energy Production"
     sensor: cool_power_production_sensor
     time_unit: h
-    unit_of_measurement: "kWh"
+    unit_of_measurement: "Wh"
     state_class: total_increasing
     device_class: energy
     accuracy_decimals: 3

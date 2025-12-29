@@ -969,6 +969,43 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
                this->zone1_cool_enabled_, this->zone2_cool_enabled_);
     }
     
+    // Quiet Mode and Powerful Mode (byte 7) - TOP18 + TOP17
+    // Left 5 bits = Quiet Mode level (0b01001=Off, 0b01010=Level 1, 0b01011=Level 2, 0b01100=Level 3, 0b10001=Scheduled)
+    // Right 3 bits = Powerful Mode level (0b001=Off, 0b010=30min, 0b011=60min, 0b100=90min)
+    {
+      uint8_t quiet_level = (data[7] >> 3) & 0b11111;  // Top 5 bits
+      uint8_t power_level = data[7] & 0b111;            // Bottom 3 bits
+      
+      // Decode Quiet Mode (TOP18)
+      if (this->callback_manager_->has_select_callback("quiet_mode")) {
+        std::string quiet_mode;
+        switch (quiet_level) {
+          case 0b01001: quiet_mode = "Off"; break;
+          case 0b01010: quiet_mode = "Level 1"; break;
+          case 0b01011: quiet_mode = "Level 2"; break;
+          case 0b01100: quiet_mode = "Level 3"; break;
+          case 0b10001: quiet_mode = "Scheduled"; break;
+          default: quiet_mode = "Off"; break;  // Safe default
+        }
+        ESP_LOGV(TAG, "Quiet Mode (TOP18): byte7=0x%02X, bits=%d, value=%s", data[7], quiet_level, quiet_mode.c_str());
+        this->callback_manager_->notify_select_value("quiet_mode", quiet_mode);
+      }
+      
+      // Decode Powerful Mode (TOP17)
+      if (this->callback_manager_->has_select_callback("powerful_mode")) {
+        std::string powerful_mode;
+        switch (power_level) {
+          case 0b001: powerful_mode = "Off"; break;
+          case 0b010: powerful_mode = "30 min"; break;
+          case 0b011: powerful_mode = "60 min"; break;
+          case 0b100: powerful_mode = "90 min"; break;
+          default: powerful_mode = "Off"; break;  // Safe default
+        }
+        ESP_LOGV(TAG, "Powerful Mode (TOP17): byte7=0x%02X, bits=%d, value=%s", data[7], power_level, powerful_mode.c_str());
+        this->callback_manager_->notify_select_value("powerful_mode", powerful_mode);
+      }
+    }
+    
     // Zone Sensor Settings (byte 22) - TOP111 and TOP112
     // getSecondByte = (input & 0b1111) - 1 for Zone 1
     // getFirstByte = (input >> 4) - 1 for Zone 2
