@@ -981,7 +981,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       
       // Decode Quiet Mode (TOP18)
       // Values after -1: 0=Off, 1=Level1, 2=Level2, 3=Level3, 16=Scheduled
-      if (this->callback_manager_->has_select_callback("quiet_mode")) {
+      if (this->callback_manager_->has_select_callback("quiet_mode_level")) {
         std::string quiet_mode;
         switch (quiet_level) {
           case 0: quiet_mode = "Off"; break;
@@ -992,7 +992,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
           default: quiet_mode = "Off"; break;  // Safe default
         }
         ESP_LOGI(TAG, "Quiet Mode (TOP18): byte7=0x%02X, bits=%d, value=%s", data[7], quiet_level, quiet_mode.c_str());
-        this->callback_manager_->notify_select_value("quiet_mode", quiet_mode);
+        this->callback_manager_->notify_select_value("quiet_mode_level", quiet_mode);
       }
       
       // Decode Powerful Mode (TOP17)
@@ -1006,6 +1006,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
           case 3: powerful_mode = "90 min"; break;
           default: powerful_mode = "Off"; break;  // Safe default
         }
+        ESP_LOGI(TAG, "Powerful Mode (TOP17): byte7=0x%02X, bits=%d, value=%s", data[7], power_level, powerful_mode.c_str());
         this->callback_manager_->notify_select_value("powerful_mode", powerful_mode);
       }
     }
