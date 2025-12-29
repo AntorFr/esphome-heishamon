@@ -813,7 +813,6 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // 0 = Room, 1 = DHW
     if (this->callback_manager_->has_select_callback("three_way_valve_state")) {
       int three_way_valve_value = (data[111] & 0b11) - 1;
-      ESP_LOGD(TAG, "3-Way Valve: byte[111]=0x%02X, decoded_value=%d", data[111], three_way_valve_value);
       std::string valve_state = (three_way_valve_value == 1) ? "DHW" : "Room";
       this->callback_manager_->notify_select_value("three_way_valve_state", valve_state);
     }
