@@ -971,37 +971,39 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     }
     
     // Quiet Mode and Powerful Mode (byte 7) - TOP18 + TOP17
-    // Left 5 bits = Quiet Mode level (0b01001=Off, 0b01010=Level 1, 0b01011=Level 2, 0b01100=Level 3, 0b10001=Scheduled)
-    // Right 3 bits = Powerful Mode level (0b001=Off, 0b010=30min, 0b011=60min, 0b100=90min)
+    // Left 5 bits = Quiet Mode level (uses getLeft5bits: (value >> 3) - 1)
+    // Right 3 bits = Powerful Mode level (uses getRight3bits: (value & 0b111) - 1)
     {
-      uint8_t quiet_level = (data[7] >> 3) & 0b11111;  // Top 5 bits
-      uint8_t power_level = data[7] & 0b111;            // Bottom 3 bits
+      uint8_t quiet_level = ((data[7] >> 3) & 0b11111) - 1;  // Top 5 bits, then -1
+      uint8_t power_level = (data[7] & 0b111) - 1;            // Bottom 3 bits, then -1
       
-      ESP_LOGI(TAG, "Byte 7 decode: raw=0x%02X, quiet_level=%d, power_level=%d", data[7], quiet_level, power_level);
+      ESP_LOGV(TAG, "Byte 7 decode: raw=0x%02X, quiet_level=%d, power_level=%d", data[7], quiet_level, power_level);
       
       // Decode Quiet Mode (TOP18)
+      // Values after -1: 0=Off, 1=Level1, 2=Level2, 3=Level3, 16=Scheduled
       if (this->callback_manager_->has_select_callback("quiet_mode")) {
         std::string quiet_mode;
         switch (quiet_level) {
-          case 0b01001: quiet_mode = "Off"; break;
-          case 0b01010: quiet_mode = "Level 1"; break;
-          case 0b01011: quiet_mode = "Level 2"; break;
-          case 0b01100: quiet_mode = "Level 3"; break;
-          case 0b10001: quiet_mode = "Scheduled"; break;
+          case 0: quiet_mode = "Off"; break;
+          case 1: quiet_mode = "Level 1"; break;
+          case 2: quiet_mode = "Level 2"; break;
+          case 3: quiet_mode = "Level 3"; break;
+          case 16: quiet_mode = "Scheduled"; break;
           default: quiet_mode = "Off"; break;  // Safe default
         }
-        ESP_LOGV(TAG, "Quiet Mode (TOP18): byte7=0x%02X, bits=%d, value=%s", data[7], quiet_level, quiet_mode.c_str());
+        ESP_LOGI(TAG, "Quiet Mode (TOP18): byte7=0x%02X, bits=%d, value=%s", data[7], quiet_level, quiet_mode.c_str());
         this->callback_manager_->notify_select_value("quiet_mode", quiet_mode);
       }
       
       // Decode Powerful Mode (TOP17)
+      // Values after -1: 0=Off, 1=30min, 2=60min, 3=90min
       if (this->callback_manager_->has_select_callback("powerful_mode")) {
         std::string powerful_mode;
         switch (power_level) {
-          case 0b001: powerful_mode = "Off"; break;
-          case 0b010: powerful_mode = "30 min"; break;
-          case 0b011: powerful_mode = "60 min"; break;
-          case 0b100: powerful_mode = "90 min"; break;
+          case 0: powerful_mode = "Off"; break;
+          case 1: powerful_mode = "30 min"; break;
+          case 2: powerful_mode = "60 min"; break;
+          case 3: powerful_mode = "90 min"; break;
           default: powerful_mode = "Off"; break;  // Safe default
         }
         this->callback_manager_->notify_select_value("powerful_mode", powerful_mode);
