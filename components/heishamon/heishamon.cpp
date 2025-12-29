@@ -808,6 +808,14 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       this->callback_manager_->notify_binary_sensor_value("force_dhw_state", force_dhw_active);
     }
     
+    // 3-Way Valve State (byte 111, bits 0-1) - TOP20
+    // 0 = Room, 1 = DHW
+    if (this->callback_manager_->has_select_callback("three_way_valve_state")) {
+      int three_way_valve_value = data[111] & 0b11;
+      std::string valve_state = (three_way_valve_value == 1) ? "DHW" : "Room";
+      this->callback_manager_->notify_select_value("three_way_valve_state", valve_state);
+    }
+    
     // Defrosting State (byte 111, bits 3&4 from right) - TOP26
     // 0b01 = not active, 0b10 = active
     if (this->callback_manager_->has_binary_sensor_callback("defrosting_state")) {
