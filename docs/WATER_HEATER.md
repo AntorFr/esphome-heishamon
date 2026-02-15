@@ -26,13 +26,15 @@ water_heater:
 Le chauffe-eau prend en charge les modes suivants :
 
 - **OFF** : Désactive la production d'eau chaude sanitaire
-- **ECO** : Mode économique (45°C par défaut)
-- **ELECTRIC** : Mode électrique standard (55°C par défaut)
-- **PERFORMANCE** : Mode performance haute température (55°C par défaut)
+- **HEAT_PUMP** : Mode pompe à chaleur standard (mode Normal Panasonic)
+- **ECO** : Mode économique - réduit la consommation d'énergie
+- **PERFORMANCE** : Mode performance haute température (mode Powerful Panasonic)
+
+> **Note** : Ces modes correspondent aux modes DHW natifs de la pompe à chaleur Panasonic : Normal → HEAT_PUMP, Eco → ECO, Powerful → PERFORMANCE.
 
 ### Contrôle de température
 
-- **Plage de température** : 40°C à 65°C
+- **Plage de température** : 40°C à 75°C
 - **Pas de réglage** : 1°C
 - **Température actuelle** : Affiche la température mesurée du ballon DHW
 - **Température cible** : Permet de définir la température souhaitée
