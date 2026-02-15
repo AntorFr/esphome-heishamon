@@ -14,6 +14,9 @@
 #ifdef USE_CLIMATE
 #include "esphome/components/climate/climate.h"
 #endif
+#ifdef USE_WATER_HEATER
+#include "esphome/components/water_heater/water_heater.h"
+#endif
 
 namespace esphome {
 namespace heishamon {
@@ -25,7 +28,7 @@ class HeishaMonClimate;
 #ifdef USE_NUMBER
 class HeishamonNumber;
 #endif
-#ifdef USE_CLIMATE
+#ifdef USE_WATER_HEATER
 class HeishamonWaterHeater;
 #endif
 
@@ -134,6 +137,8 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Optional component registration - only defined if components are used
 #ifdef USE_CLIMATE
   void register_climate_component(class HeishaMonClimate *climate);
+#endif
+#ifdef USE_WATER_HEATER
   void register_water_heater(class HeishamonWaterHeater *water_heater);
 #endif
   
@@ -170,7 +175,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   std::vector<class HeishamonNumber *> number_components_;
 #endif
   
-#ifdef USE_CLIMATE
+#ifdef USE_WATER_HEATER
   std::vector<class HeishamonWaterHeater *> water_heater_components_;
 #endif
   

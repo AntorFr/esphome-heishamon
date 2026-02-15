@@ -1,11 +1,9 @@
 #pragma once
 #include "esphome/core/defines.h"
-// Using USE_CLIMATE until ESPHome supports water_heater natively
-// PR in progress: https://github.com/esphome/esphome/pull/XXXX
-#ifdef USE_CLIMATE
+#ifdef USE_WATER_HEATER
 
 #include "esphome/core/component.h"
-#include "esphome/components/climate/climate.h"
+#include "esphome/components/water_heater/water_heater.h"
 #include "esphome/core/log.h"
 
 namespace esphome {
@@ -13,52 +11,47 @@ namespace heishamon {
 
 class HeishamonComponent;
 
-// DHW operating mode presets
-enum class DHWOperatingMode : uint8_t {
-  NORMAL = 0,       // Normal/Standard mode
-  ECO = 1,          // Eco mode (energy saving)
-  POWERFUL = 2,     // Powerful/Performance mode
-};
-
-// DHW (Domestic Hot Water) implemented as Climate until ESPHome supports water_heater
-class HeishamonWaterHeater : public climate::Climate, public Component {
+// DHW (Domestic Hot Water) using native ESPHome WaterHeater platform
+// Maps Panasonic DHW modes to WaterHeater modes:
+//   WATER_HEATER_MODE_OFF         -> DHW disabled
+//   WATER_HEATER_MODE_HEAT_PUMP   -> Normal mode (heat pump only)
+//   WATER_HEATER_MODE_ECO         -> Eco mode (energy saving)
+//   WATER_HEATER_MODE_PERFORMANCE -> Powerful/Performance mode
+class HeishamonWaterHeater : public water_heater::WaterHeater {
  public:
   void setup() override;
   void dump_config() override;
-  
-  // Climate interface implementation
-  void control(const climate::ClimateCall &call) override;
-  climate::ClimateTraits traits() override;
-  
+  float get_setup_priority() const override { return setup_priority::DATA; }
+
+  // WaterHeater interface implementation
+  void control(const water_heater::WaterHeaterCall &call) override;
+  water_heater::WaterHeaterCallInternal make_call() override;
+
   // HeishaMon integration
   void set_parent(HeishamonComponent *parent) { parent_ = parent; }
-  
+
   // Update methods called by HeishamonComponent
   void update_from_heishamon();
 
  protected:
+  water_heater::WaterHeaterTraits traits() override;
+
   HeishamonComponent *parent_{nullptr};
-  
+
   // DHW state tracking
-  float target_temperature_{45.0f};
+  float target_temperature_internal_{45.0f};
   bool dhw_heating_{false};
-  DHWOperatingMode dhw_operating_mode_{DHWOperatingMode::NORMAL};
-  bool force_dhw_{false};  // Force DHW active state
-  
-  // Custom preset names
-  static const char* PRESET_NORMAL;
-  static const char* PRESET_ECO;
-  static const char* PRESET_POWERFUL;
-  
+
   // Private methods
   void send_target_temperature_();
-  void send_dhw_operating_mode_();
-  
-  // Helper to convert mode to preset string
-  std::string mode_to_preset_string_(DHWOperatingMode mode);
-  DHWOperatingMode preset_string_to_mode_(const std::string &preset);
+  void send_mode_command_(water_heater::WaterHeaterMode mode);
+
+  // Conversion helpers
+  static water_heater::WaterHeaterMode dhw_mode_to_water_heater_mode_(int dhw_mode);
+  static int water_heater_mode_to_dhw_mode_(water_heater::WaterHeaterMode mode);
 };
 
 }  // namespace heishamon
 }  // namespace esphome
-#endif
+
+#endif  // USE_WATER_HEATER

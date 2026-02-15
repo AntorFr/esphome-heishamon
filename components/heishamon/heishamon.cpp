@@ -3,6 +3,8 @@
 
 #ifdef USE_CLIMATE
 #include "climate.h"
+#endif
+#ifdef USE_WATER_HEATER
 #include "water_heater.h"
 #endif
 
@@ -1040,6 +1042,8 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     for (auto *climate : this->climate_components_) {
       climate->update_from_heishamon();
     }
+#endif
+#ifdef USE_WATER_HEATER
     // Notify DHW (Water Heater) components
     for (auto *wh : this->water_heater_components_) {
       wh->update_from_heishamon();
@@ -1232,7 +1236,9 @@ void HeishamonComponent::register_climate_component(HeishaMonClimate *climate) {
   ESP_LOGD(TAG, "Registering climate component");
   this->climate_components_.push_back(climate);
 }
+#endif
 
+#ifdef USE_WATER_HEATER
 void HeishamonComponent::register_water_heater(HeishamonWaterHeater *water_heater) {
   ESP_LOGD(TAG, "Registering water heater (DHW) component");
   this->water_heater_components_.push_back(water_heater);
