@@ -9,7 +9,8 @@ Native ESPHome component for Panasonic Aquarea heat pumps, based on the original
 - **🎛️ Controls**: Operating mode, quiet mode, powerful mode, DHW temperature, zone temperatures
 - **🔄 Selects**: Operating mode, quiet mode, powerful mode, zones, heating mode
 - **🔢 Numbers**: Temperature setpoints, deltas, bivalent settings
-- **🔘 Switches**: Force DHW, quiet mode
+- **� Water Heater**: Native DHW (Domestic Hot Water) control with ECO/HEAT_PUMP/PERFORMANCE modes
+- **�🔘 Switches**: Force DHW, quiet mode
 - **📊 Binary Sensors**: Heat pump state, defrosting, zone pumps, alarms
 - **📝 Text Sensors**: Error codes, heat pump model
 - **🔇 Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
