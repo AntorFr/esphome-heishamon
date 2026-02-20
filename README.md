@@ -26,7 +26,7 @@ Native ESPHome component for Panasonic Aquarea heat pumps, based on the original
 external_components:
   - source:
       type: git
-      url: https://github.com/YOUR_USERNAME/esphome-heishamon
+      url: https://github.com/AntorFr/esphome-heishamon
       ref: main
     components: [heishamon]
 ```
