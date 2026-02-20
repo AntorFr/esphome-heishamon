@@ -17,7 +17,7 @@ class HeishamonComponent;
 //   WATER_HEATER_MODE_HEAT_PUMP   -> Normal mode (heat pump only)
 //   WATER_HEATER_MODE_ECO         -> Eco mode (energy saving)
 //   WATER_HEATER_MODE_PERFORMANCE -> Powerful/Performance mode
-class HeishamonWaterHeater : public water_heater::WaterHeater {
+class HeishamonWaterHeater : public water_heater::WaterHeater, public Component {
  public:
   void setup() override;
   void dump_config() override;

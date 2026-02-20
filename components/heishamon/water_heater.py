@@ -12,7 +12,7 @@ DEPENDENCIES = ["heishamon", "water_heater"]
 
 # Water Heater Component (native ESPHome WaterHeater platform)
 HeishamonWaterHeater = heishamon_ns.class_(
-    "HeishamonWaterHeater", water_heater.WaterHeater
+    "HeishamonWaterHeater", water_heater.WaterHeater, cg.Component
 )
 
 # Configuration schema for DHW Water Heater
@@ -23,6 +23,7 @@ CONFIG_SCHEMA = water_heater.water_heater_schema(HeishamonWaterHeater).extend({
 
 async def to_code(config):
     var = await water_heater.new_water_heater(config)
+    await cg.register_component(var, config)
     parent = await cg.get_variable(config[CONF_HEISHAMON_ID])
     cg.add(var.set_parent(parent))
     cg.add(parent.register_water_heater(var))
