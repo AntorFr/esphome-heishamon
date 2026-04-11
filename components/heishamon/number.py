@@ -238,6 +238,18 @@ HEISHA_NUMBER_CONFIGS = {
         "device_class": "temperature"
     },
     
+    # SET46 - Heater On Outdoor Temperature (-15 to 20°C)
+    "heater_on_outdoor_temp": {
+        "name": "Heater On Outdoor Temperature",
+        "command": "SetHeaterOnOutdoorTemp",
+        "read_topic": "heater_on_outdoor_temp",
+        "min_value": -15.0,
+        "max_value": 20.0,
+        "step": 1.0,
+        "unit": UNIT_CELSIUS,
+        "device_class": "temperature"
+    },
+    
     # Bivalent controls
     "bivalent_start_temp": {
         "name": "Bivalent Start Temperature",
@@ -314,6 +326,17 @@ CONFIG_SCHEMA = cv.Schema(
     }
 ).extend(number.number_schema(HeishamonNumber))
 
+
+def _build_number_schema(number_config):
+    """Build schema kwargs for unit_of_measurement and device_class from config."""
+    kwargs = {}
+    if number_config.get("unit"):
+        kwargs["unit_of_measurement"] = number_config["unit"]
+    if number_config.get("device_class"):
+        kwargs["device_class"] = number_config["device_class"]
+    return kwargs
+
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     
@@ -351,9 +374,3 @@ async def to_code(config):
     cg.add(var.set_min_value(min_val))
     cg.add(var.set_max_value(max_val))
     cg.add(var.set_step(step_val))
-    
-    # Set unit and device class if specified
-    if number_config["unit"]:
-        cg.add(var.set_unit_of_measurement(number_config["unit"]))
-    if number_config["device_class"]:
-        cg.add(var.set_device_class(number_config["device_class"]))

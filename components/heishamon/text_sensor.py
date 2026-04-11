@@ -58,12 +58,13 @@ async def to_code(config):
     # Get topic-specific configuration
     topic_config = get_topic_config(topic)
     
-    # Create the text sensor
-    var = await text_sensor.new_text_sensor(config)
+    # Merge icon into config for registration
+    merged_config = dict(config)
+    if "icon" in topic_config and "icon" not in merged_config:
+        merged_config["icon"] = topic_config["icon"]
     
-    # Set icon if defined in topic config and not overridden in YAML
-    if "icon" in topic_config:
-        cg.add(var.set_icon(topic_config["icon"]))
+    # Create the text sensor
+    var = await text_sensor.new_text_sensor(merged_config)
     
     # Register with parent component
     cg.add(parent.register_text_sensor_callback(

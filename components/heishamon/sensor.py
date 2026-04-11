@@ -934,26 +934,33 @@ CONFIG_SCHEMA = cv.Schema(
 ).extend(sensor.sensor_schema())
 
 async def to_code(config):
+    topic = config["topic"]
+    topic_config = HEISHA_TOPICS[topic]
+    
+    # Build sensor schema defaults from topic config
+    schema_kwargs = {}
+    if topic_config["unit"] and "unit_of_measurement" not in config:
+        schema_kwargs["unit_of_measurement"] = topic_config["unit"]
+    if topic_config.get("device_class") and "device_class" not in config:
+        schema_kwargs["device_class"] = topic_config["device_class"]
+    if topic_config.get("icon") and "icon" not in config:
+        schema_kwargs["icon"] = topic_config["icon"]
+    if topic_config.get("accuracy_decimals") is not None and "accuracy_decimals" not in config:
+        schema_kwargs["accuracy_decimals"] = topic_config["accuracy_decimals"]
+    
+    # Merge defaults into config for registration
+    merged_config = dict(config)
+    for key, value in schema_kwargs.items():
+        if key not in merged_config:
+            merged_config[key] = value
+    
     var = cg.new_Pvariable(config[CONF_ID])
-    await sensor.register_sensor(var, config)
+    await sensor.register_sensor(var, merged_config)
 
     parent = await cg.get_variable(config["heishamon_id"])
     
     # Register callback with parent component for this topic
-    topic = config["topic"]
     cg.add(parent.register_sensor_callback(
         topic,
         cg.RawExpression(f"[=](float value) {{ {var}->publish_state(value); }}")
     ))
-    
-    # Automatic configuration of units and classes
-    topic_config = HEISHA_TOPICS[config["topic"]]
-    if topic_config["unit"] and "unit_of_measurement" not in config:
-        cg.add(var.set_unit_of_measurement(topic_config["unit"]))
-    if topic_config.get("device_class") and "device_class" not in config:
-        cg.add(var.set_device_class(topic_config["device_class"]))
-    # Note: state_class should be set through the config schema, not manually here
-    if topic_config.get("icon") and "icon" not in config:
-        cg.add(var.set_icon(topic_config["icon"]))
-    if topic_config.get("accuracy_decimals") is not None and "accuracy_decimals" not in config:
-        cg.add(var.set_accuracy_decimals(topic_config["accuracy_decimals"]))

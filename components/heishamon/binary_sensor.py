@@ -293,21 +293,23 @@ CONFIG_SCHEMA = cv.Schema(
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    await binary_sensor.register_binary_sensor(var, config)
-
-    parent = await cg.get_variable(config["heishamon_id"])
     
     # Get topic configuration
     topic_config = HEISHA_BINARY_TOPICS[config["topic"]]
+    
+    # Merge defaults into config for registration
+    merged_config = dict(config)
+    if topic_config.get("device_class") and "device_class" not in merged_config:
+        merged_config["device_class"] = topic_config["device_class"]
+    if topic_config.get("icon") and "icon" not in merged_config:
+        merged_config["icon"] = topic_config["icon"]
+    
+    await binary_sensor.register_binary_sensor(var, merged_config)
+
+    parent = await cg.get_variable(config["heishamon_id"])
     
     # Register the callback with the parent
     cg.add(parent.register_binary_sensor_callback(
         config["topic"],
         cg.RawExpression(f"[=](bool value) {{ {var}->publish_state(value); }}")
     ))
-    
-    # Auto-configure device class and icon if not specified
-    if topic_config.get("device_class") and "device_class" not in config:
-        cg.add(var.set_device_class(topic_config["device_class"]))
-    if topic_config.get("icon") and "icon" not in config:
-        cg.add(var.set_icon(topic_config["icon"]))

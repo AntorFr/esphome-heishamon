@@ -21,14 +21,6 @@ class HeishamonNumber : public number::Number, public Component {
   void set_min_value(float min_value) { this->traits.set_min_value(min_value); }
   void set_max_value(float max_value) { this->traits.set_max_value(max_value); }
   void set_step(float step) { this->traits.set_step(step); }
-  void set_unit_of_measurement(const std::string &unit) { 
-    this->unit_ = unit;  // Store persistently
-    this->traits.set_unit_of_measurement(this->unit_.c_str()); 
-  }
-  void set_device_class(const std::string &device_class) {
-    this->device_class_ = device_class;  // Store persistently  
-    this->traits.set_device_class(this->device_class_.c_str()); 
-  }
 
   void setup() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
@@ -40,8 +32,6 @@ class HeishamonNumber : public number::Number, public Component {
   std::string number_type_;
   std::string command_;
   std::string read_topic_;  // Topic to read current value from
-  std::string unit_;        // Persistent storage for unit
-  std::string device_class_; // Persistent storage for device class
 };
 
 }  // namespace heishamon
