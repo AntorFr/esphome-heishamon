@@ -166,6 +166,9 @@ See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor
 | `zones` | Zone 1/2/Both | TOP94 |
 | `heating_mode` | Compensation/Direct | TOP76 |
 | `three_way_valve` | Room/DHW/Defrost | TOP20 |
+| `dhw_sensor_selection` | DHW Sensor Top/Center (K/L All-In-One) | TOP143 |
+| `dhw_heater_state` | DHW Heater Blocked/Free | SET44 |
+| `room_heater_state` | Room Heater Blocked/Free | SET45 |
 
 ### Numbers (number platform)
 
@@ -179,6 +182,7 @@ See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor
 | `dhw_heat_delta` | DHW Heat Delta | SET18 |
 | `heat_delta` | Floor Heat Delta | SET19 |
 | `cool_delta` | Floor Cool Delta | SET20 |
+| `heater_on_outdoor_temp` | Heater On Outdoor Temp (-15 to 20°C) | SET46 |
 
 ### Switches (switch platform)
 

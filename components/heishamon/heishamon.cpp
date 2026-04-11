@@ -1037,6 +1037,31 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       ESP_LOGV(TAG, "Zone sensor modes: raw=0x%02X, z1=%d, z2=%d", data[22], z1_sensor, z2_sensor);
     }
     
+    // === DHW SENSOR SELECTION (byte 11, bits 7&8) - TOP143 ===
+    // K/L series All-In-One only
+    // getBit7and8: (input & 0b11), 0b01 = Top sensor, 0b10 = Center sensor
+    if (this->callback_manager_->has_select_callback("dhw_sensor_selection")) {
+      uint8_t dhw_sensor_value = data[11] & 0b11;
+      std::string dhw_sensor = (dhw_sensor_value == 0b10) ? "Center" : "Top";
+      this->callback_manager_->notify_select_value("dhw_sensor_selection", dhw_sensor);
+    }
+    
+    // === DHW HEATER STATE (byte 9, bits 5&6) - SET44 read-back ===
+    // getBit5and6: ((input >> 2) & 0b11), 0b01 = off/blocked, 0b10 = on/free
+    if (this->callback_manager_->has_select_callback("dhw_heater_state")) {
+      uint8_t dhw_heater_value = (data[9] >> 2) & 0b11;
+      std::string dhw_heater = (dhw_heater_value == 0b10) ? "Free" : "Blocked";
+      this->callback_manager_->notify_select_value("dhw_heater_state", dhw_heater);
+    }
+    
+    // === ROOM HEATER STATE (byte 9, bits 7&8) - SET45 read-back ===
+    // getBit7and8: (input & 0b11), 0b01 = off/blocked, 0b10 = on/free
+    if (this->callback_manager_->has_select_callback("room_heater_state")) {
+      uint8_t room_heater_value = data[9] & 0b11;
+      std::string room_heater = (room_heater_value == 0b10) ? "Free" : "Blocked";
+      this->callback_manager_->notify_select_value("room_heater_state", room_heater);
+    }
+    
     // === NOTIFY CLIMATE COMPONENTS ===
 #ifdef USE_CLIMATE
     for (auto *climate : this->climate_components_) {

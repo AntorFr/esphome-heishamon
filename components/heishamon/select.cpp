@@ -69,6 +69,18 @@ static const std::map<std::string, std::map<std::string, uint8_t>> SELECT_VALUE_
     {"z2_sensor_settings", {
         {"Water temperature", 0}, {"External thermostat", 1}, {"Internal thermostat", 2}, {"Thermistor", 3}
     }},
+    // SET43 - DHW Sensor Selection (K/L series All-In-One)
+    {"dhw_sensor_selection", {
+        {"Top", 0}, {"Center", 1}
+    }},
+    // SET44 - DHW Heater State
+    {"dhw_heater_state", {
+        {"Blocked", 0}, {"Free", 1}
+    }},
+    // SET45 - Room Heater State
+    {"room_heater_state", {
+        {"Blocked", 0}, {"Free", 1}
+    }},
 };
 
 // Reverse map for converting numeric values to option strings

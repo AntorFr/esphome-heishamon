@@ -150,6 +150,36 @@ HEISHA_SELECT_OPTIONS = {
         "icon": "mdi:pump"
     },
     
+    # SET43 - DHW Sensor Selection (K/L series All-In-One only)
+    "dhw_sensor_selection": {
+        "name": "DHW Sensor Selection",
+        "command": "SetDHWSensorSelection",
+        "topic": "dhw_sensor_selection",
+        "options": ["Top", "Center"],
+        "default": "Top",
+        "icon": "mdi:thermometer-water"
+    },
+    
+    # SET44 - DHW Heater State (blocked or free)
+    "dhw_heater_state": {
+        "name": "DHW Heater State",
+        "command": "SetDHWHeaterState",
+        "topic": "dhw_heater_state",
+        "options": ["Blocked", "Free"],
+        "default": "Blocked",
+        "icon": "mdi:water-boiler"
+    },
+    
+    # SET45 - Room Heater State (blocked or free)
+    "room_heater_state": {
+        "name": "Room Heater State",
+        "command": "SetRoomHeaterState",
+        "topic": "room_heater_state",
+        "options": ["Blocked", "Free"],
+        "default": "Blocked",
+        "icon": "mdi:radiator"
+    },
+    
     # Liquid Type - Read from TOP107
     "liquid_type": {
         "name": "Liquid Type",

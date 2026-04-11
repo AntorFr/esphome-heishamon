@@ -713,6 +713,25 @@ select:
     type: "z2_sensor_settings"
     name: "Zone 2 Sensor Settings (TOP111)"
 
+  # v4.1.2 additions: DHW sensor selection and heater control
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "dhw_sensor_selection"
+    name: "DHW Sensor Selection (TOP143/SET43)"
+    entity_category: config
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "dhw_heater_state"
+    name: "DHW Heater State (SET44)"
+    entity_category: config
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "room_heater_state"
+    name: "Room Heater State (SET45)"
+    entity_category: config
+
 # =============================================================================
 # NUMBERS - Temperature setpoints and control parameters (all are config)
 # =============================================================================
@@ -783,6 +802,12 @@ number:
     heishamon_id: heisha_main
     type: "heating_off_outdoor_temp"
     name: "Heating Off Outdoor Temp (SET24/TOP77)"
+    entity_category: config
+
+  - platform: heishamon
+    heishamon_id: heisha_main
+    type: "heater_on_outdoor_temp"
+    name: "Heater On Outdoor Temp (SET46/TOP78)"
     entity_category: config
 
   # ============== BIVALENT CONTROLS ==============
