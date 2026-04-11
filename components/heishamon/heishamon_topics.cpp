@@ -25,7 +25,7 @@ std::vector<TopicConfig> HeishamonTopics::get_standard_topics() {
   return {
     // Phase 1: Essential temperature sensors
     create_topic("dhw_temp", 141, get_int_minus_128, "°C", "DHW Tank Temperature", false, "temperature"),
-    create_topic("dhw_target_temp", 42, get_int_minus_1, "°C", "DHW Target Temperature", false, "temperature"),
+    create_topic("dhw_target_temp", 42, get_int_minus_128, "°C", "DHW Target Temperature", false, "temperature"),
     create_topic("outside_temp", 142, get_int_minus_128, "°C", "Outside Temperature", false, "temperature"),
     create_topic("main_inlet_temp", 143, get_int_minus_128, "°C", "Main Inlet Temperature", false, "temperature"),
     create_topic("main_outlet_temp", 144, get_int_minus_128, "°C", "Main Outlet Temperature", false, "temperature"),
@@ -36,10 +36,10 @@ std::vector<TopicConfig> HeishamonTopics::get_standard_topics() {
     create_topic("z2_temp", 140, get_int_minus_128, "°C", "Zone 2 Temperature", false, "temperature"),
     
     // Zone target temperatures (for number components)
-    create_topic("z1_heat_target_temp", 38, get_int_minus_1, "°C", "Zone 1 Heat Target Temperature", false, "temperature"),
-    create_topic("z1_cool_target_temp", 39, get_int_minus_1, "°C", "Zone 1 Cool Target Temperature", false, "temperature"),
-    create_topic("z2_heat_target_temp", 40, get_int_minus_1, "°C", "Zone 2 Heat Target Temperature", false, "temperature"),
-    create_topic("z2_cool_target_temp", 41, get_int_minus_1, "°C", "Zone 2 Cool Target Temperature", false, "temperature"),
+    create_topic("z1_heat_target_temp", 38, get_int_minus_128, "°C", "Zone 1 Heat Target Temperature", false, "temperature"),
+    create_topic("z1_cool_target_temp", 39, get_int_minus_128, "°C", "Zone 1 Cool Target Temperature", false, "temperature"),
+    create_topic("z2_heat_target_temp", 40, get_int_minus_128, "°C", "Zone 2 Heat Target Temperature", false, "temperature"),
+    create_topic("z2_cool_target_temp", 41, get_int_minus_128, "°C", "Zone 2 Cool Target Temperature", false, "temperature"),
     
     // Binary sensors - Heat pump states
     create_topic("heatpump_state", 4, get_bit_7_and_8, "", "Heat Pump State", true, "running"),
@@ -55,7 +55,6 @@ std::vector<TopicConfig> HeishamonTopics::get_standard_topics() {
     create_topic("dhw_power", 195, get_dhw_power, "W", "DHW Power", false, "power"),
     
     // Operating modes and states
-    create_topic("operating_mode_state", 113, get_bit_3_and_4, "", "Operating Mode State", false, ""),
     create_topic("zones_state", 114, get_bit_5_and_6, "", "Zones State", false, ""),
     create_topic("dhw_mode", 115, unknown, "", "DHW Mode", false, ""),
     
@@ -70,7 +69,6 @@ std::vector<TopicConfig> HeishamonTopics::get_standard_topics() {
     
     // Defrost and error states
     create_topic("defrost_state", 198, unknown, "", "Defrost State", true, "running"),
-    create_topic("error_state", 113, get_bit_1_and_2, "", "Error State", true, "problem"),
     
     // Phase 3: Operational data
     create_topic("operating_hours", 180, get_operating_hours, "h", "Operating Hours", false, "duration"),

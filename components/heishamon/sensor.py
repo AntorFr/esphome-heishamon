@@ -553,19 +553,19 @@ HEISHA_TOPICS = {
         "icon": "mdi:thermometer"
     },
     
-    # TOP29 - Zone 2 Heat Request Temperature
+    # TOP34 - Zone 2 Heat Request Temperature
     "z2_heat_request_temp": {
         "name": "Zone 2 Heat Request Temperature",
-        "topic_id": 29,
+        "topic_id": 34,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:thermometer"
     },
     
-    # TOP30 - Zone 2 Cool Request Temperature
+    # TOP35 - Zone 2 Cool Request Temperature
     "z2_cool_request_temp": {
         "name": "Zone 2 Cool Request Temperature",
-        "topic_id": 30,
+        "topic_id": 35,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:thermometer"
@@ -573,10 +573,10 @@ HEISHA_TOPICS = {
     
     # ============== CURVE TEMPERATURES (Zone 1 Heat) ==============
     
-    # TOP31-34 - Zone 1 Heat Curve
+    # TOP29-32 - Zone 1 Heat Curve
     "z1_heat_curve_target_high": {
         "name": "Zone 1 Heat Curve Target High",
-        "topic_id": 31,
+        "topic_id": 29,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:chart-bell-curve"
@@ -584,7 +584,7 @@ HEISHA_TOPICS = {
     
     "z1_heat_curve_target_low": {
         "name": "Zone 1 Heat Curve Target Low",
-        "topic_id": 32,
+        "topic_id": 30,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:chart-bell-curve"
@@ -592,7 +592,7 @@ HEISHA_TOPICS = {
     
     "z1_heat_curve_outside_high": {
         "name": "Zone 1 Heat Curve Outside High",
-        "topic_id": 33,
+        "topic_id": 31,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:chart-bell-curve"
@@ -600,7 +600,7 @@ HEISHA_TOPICS = {
     
     "z1_heat_curve_outside_low": {
         "name": "Zone 1 Heat Curve Outside Low",
-        "topic_id": 34,
+        "topic_id": 32,
         "unit": UNIT_CELSIUS, 
         "device_class": DEVICE_CLASS_TEMPERATURE,
         "icon": "mdi:chart-bell-curve"

@@ -189,7 +189,7 @@ HEISHA_SELECT_OPTIONS = {
         "icon": "mdi:water"
     },
     
-    # Zone 1 Sensor Settings - Read from TOP112
+    # Zone 1 Sensor Settings - Read from TOP111 (byte 22, low nibble = getSecondByte)
     "z1_sensor_settings": {
         "name": "Zone 1 Sensor",
         "topic": "z1_sensor_settings",
@@ -198,7 +198,7 @@ HEISHA_SELECT_OPTIONS = {
         "icon": "mdi:thermometer"
     },
     
-    # Zone 2 Sensor Settings - Read from TOP111
+    # Zone 2 Sensor Settings - Read from TOP112 (byte 22, high nibble = getFirstByte)
     "z2_sensor_settings": {
         "name": "Zone 2 Sensor",
         "topic": "z2_sensor_settings",
