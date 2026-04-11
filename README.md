@@ -2,17 +2,17 @@
 
 Native ESPHome component for Panasonic Aquarea heat pumps, based on the original [HeishaMon](https://github.com/Egyras/HeishaMon) project.
 
-**Minimum required ESPHome version: 2026.2.0**
+**Minimum required ESPHome version: 2026.3.0**
 
 ## Features
 
 - **📡 Full Protocol Support**: Complete HeishaMon protocol implementation
 - **🌡️ 100+ Sensors**: Temperature, power, pressure, operating hours, zone data
-- **🎛️ Controls**: Operating mode, quiet mode, powerful mode, DHW temperature, zone temperatures
+- **🎛️ Controls**: 60+ commands for full bidirectional heat pump control
 - **🔄 Selects**: Operating mode, quiet mode, powerful mode, zones, heating mode
-- **🔢 Numbers**: Temperature setpoints, deltas, bivalent settings
-- **� Water Heater**: Native DHW (Domestic Hot Water) control with ECO/HEAT_PUMP/PERFORMANCE modes
-- **�🔘 Switches**: Force DHW, quiet mode
+- **🔢 Numbers**: Temperature setpoints, deltas, curve settings, bivalent settings
+- **💧 Water Heater**: Native DHW (Domestic Hot Water) control with ECO/HEAT_PUMP/PERFORMANCE modes
+- **🔘 Switches**: Force DHW, holiday mode, sterilization, quiet mode
 - **📊 Binary Sensors**: Heat pump state, defrosting, zone pumps, alarms
 - **📝 Text Sensors**: Error codes, heat pump model
 - **🔇 Listen-Only Mode**: Compatible with existing CZ-TAW1 installations
@@ -203,8 +203,20 @@ See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor
 - **Baud Rate:** 9600
 - **Parity:** EVEN
 - **Stop Bits:** 1
-- **Data Packet:** 203 bytes
+- **Data Packet (receive):** 203 bytes (header 0x71)
+- **Command Packet (send):** 110 bytes (header 0xF1)
 - **Update Interval:** 30s recommended
+
+### Command Encoding
+
+All SET commands are encoded into a 110-byte packet with header `{0xF1, 0x6C, 0x01, 0x10}`. Each command sets a specific byte position with an encoded value. The protocol layer handles checksum calculation and UART transmission automatically.
+
+Supported command categories:
+- **Temperature setpoints**: DHW, zone heat/cool requests, curve temperatures, bivalent temps
+- **Operating modes**: Heat, cool, auto, DHW, combined modes
+- **On/Off controls**: Heatpump, pump, holiday, schedule, force DHW/defrost/sterilization
+- **Configuration**: Zones, quiet mode, powerful mode, buffer, external controls, bivalent, heating control
+- **Advanced**: Pad heater, pump flowrate, heater delay/delta, smart DHW
 
 ## Supported Models
 

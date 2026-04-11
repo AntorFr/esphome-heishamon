@@ -1,4 +1,5 @@
 #include "heishamon.h"
+#include "heishamon_topics.h"
 #include "esphome/core/log.h"
 
 #ifdef USE_CLIMATE
@@ -1129,30 +1130,45 @@ bool HeishamonComponent::send_command(const std::vector<uint8_t> &command) {
 }
 
 void HeishamonComponent::send_command(const std::string &command) {
-  // Delegate to protocol layer or command manager when implemented
   ESP_LOGD(TAG, "Send command: %s", command.c_str());
 }
 
 void HeishamonComponent::send_command(const std::string &command, const std::string &value) {
-  // Delegate to protocol layer or command manager when implemented  
-  ESP_LOGD(TAG, "Send command: %s = %s", command.c_str(), value.c_str());
+  // Parse string value as integer and delegate
+  char *end;
+  long int_value = strtol(value.c_str(), &end, 10);
+  if (end == value.c_str() || *end != '\0') {
+    ESP_LOGW(TAG, "Cannot parse command value '%s' as integer for %s", value.c_str(), command.c_str());
+    return;
+  }
+  this->send_command(command, static_cast<uint8_t>(int_value));
 }
 
 void HeishamonComponent::send_command(const std::string &command, uint8_t value) {
-  // Create and send the command packet to the heat pump
   ESP_LOGD(TAG, "Send command: %s = %d", command.c_str(), value);
-  this->create_command(command, value);
+  auto config = HeishamonTopics::get_command_config(command);
+  if (config.name.empty()) {
+    ESP_LOGW(TAG, "Unknown command: %s", command.c_str());
+    return;
+  }
+  auto packet = HeishamonTopics::encode_command(config, static_cast<int>(value));
+  this->send_command(packet);
 }
 
 void HeishamonComponent::create_command(const std::string &command, uint8_t value) {
-  // Delegate to protocol layer or command manager when implemented
-  ESP_LOGD(TAG, "Create command: %s = %d", command.c_str(), value);
+  // Delegate to send_command which now handles encoding
+  this->send_command(command, value);
 }
 
 bool HeishamonComponent::send_number_command(const std::string &command, float value) {
-  // Delegate to protocol layer or command manager when implemented
   ESP_LOGD(TAG, "Send number command: %s = %.1f", command.c_str(), value);
-  return true;
+  auto config = HeishamonTopics::get_command_config(command);
+  if (config.name.empty()) {
+    ESP_LOGW(TAG, "Unknown command: %s", command.c_str());
+    return false;
+  }
+  auto packet = HeishamonTopics::encode_command(config, static_cast<int>(value));
+  return this->send_command(packet);
 }
 
 // Climate control stubs - these will be implemented in Phase 2

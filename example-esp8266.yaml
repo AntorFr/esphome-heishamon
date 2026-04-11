@@ -116,8 +116,8 @@ sensor:
   # Operating hours for maintenance
   - platform: heishamon
     heishamon_id: heisha_main
-    topic: "compressor_operating_hours"
-    name: "Compressor Operating Hours"
+    topic: "operations_hours"
+    name: "Operations Hours"
 
 # Climate components (Thermostats)
 climate:
@@ -167,28 +167,28 @@ output:
 switch:
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "force_dhw"
+    topic: "force_dhw"
     name: "Force DHW"
     
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "force_defrost"
-    name: "Force Defrost"
+    topic: "sterilization"
+    name: "Sterilization"
     
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "holiday_mode"
+    topic: "holiday_mode"
     name: "Holiday Mode"
     
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "heatpump_state"
+    topic: "heatpump_state"
     name: "Heat Pump State"
     
   # Essential switches for ESP8266 (memory limited)
   - platform: heishamon
     heishamon_id: heisha_main
-    command: "external_control"
+    topic: "external_control"
     name: "External Control"
 
   # Switch to control GPIO activation

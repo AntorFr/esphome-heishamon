@@ -22,15 +22,42 @@ struct TopicConfig {
 };
 
 /**
+ * Command encoding types - how the input value is transformed before writing to the send buffer
+ */
+enum class CommandEncoding : uint8_t {
+  VALUE_PLUS_128,        // byte = value + 128 (temperatures, signed values)
+  VALUE_PLUS_1,          // byte = value + 1 (unsigned values like pump duty, heater delay)
+  POWER_PLUS_128,        // byte = (value + 1) * 200 style → actually value + 128 for power
+  ONOFF_64_128,          // 0→64, 1→128 (force DHW, main schedule, etc.)
+  ONOFF_16_32,           // 0→16, 1→32 (holiday, pump, alt sensor, etc.)
+  ONOFF_1_2,             // 0→1, 1→2 (heatpump state, bivalent control, external control)
+  ONOFF_0_2,             // 0→0, 1→2 (force defrost)
+  ONOFF_0_4,             // 0→0, 1→4 (force sterilization)
+  QUIET_MODE,            // byte = (value + 1) * 8
+  POWERFUL_MODE,         // byte = (value + 1) & 0b111
+  OPERATION_MODE,        // Special map: 0→18, 1→19, 2→24, 3→33, 4→34, 5→35, 6→40
+  ZONES,                 // 0→64, 1→128, 2→192
+  PAD_HEATER,            // 0→16, 1→32, 2→48
+  BIVALENT_MODE,         // 0→4, 1→8, 2→12
+  BIT_SHIFT_2,           // byte = (value+1) << 2 (heating control, dhw heater state)
+  BIT_SHIFT_4,           // byte = (value+1) << 4 (quiet mode priority, pump flowrate)
+  BIT_SHIFT_6,           // byte = (value+1) << 6 (smart DHW)
+  DIRECT,                // byte = value (direct, for DHW sensor selection, room heater state)
+  ONOFF_4_8,             // 0→4, 1→8 (buffer, external heat/cool control)
+  ONOFF_16_32_48,        // alias for PAD_HEATER
+  EXTERNAL_ERROR,        // 0→16, 1→32
+  EXTERNAL_COMPRESSOR,   // 0→64, 1→128
+};
+
+/**
  * Command configuration structure
- * Maps command names to their protocol implementation
+ * Maps command names to their protocol byte position and encoding
+ * Based on the 110-byte panasonicSendQuery with header {0xF1, 0x6C, 0x01, 0x10}
  */
 struct CommandConfig {
-  std::string name;                             // Command name (e.g., "SetDHWTargetTemp")
-  std::vector<uint8_t> base_command;           // Base command bytes
-  uint8_t value_position;                       // Position where value goes
-  float min_value;                              // Minimum allowed value
-  float max_value;                              // Maximum allowed value
+  std::string name;                             // Command name (e.g., "SetDHWTemp")
+  uint8_t byte_position;                       // Position in 110-byte send buffer
+  CommandEncoding encoding;                     // How to encode the value
   std::string description;                      // Description
 };
 
@@ -52,6 +79,10 @@ class HeishamonTopics {
   // Command configuration
   static std::vector<CommandConfig> get_available_commands();
   static CommandConfig get_command_config(const std::string &command_name);
+  
+  // Command encoding - build a 110-byte send buffer with the appropriate value
+  static std::vector<uint8_t> encode_command(const CommandConfig &config, int value);
+  static uint8_t encode_value(CommandEncoding encoding, int value);
   
   // Decoding functions (static to be used in topic configs)
   static float unknown(uint8_t input);
@@ -88,9 +119,8 @@ class HeishamonTopics {
                                  const std::string &device_class = "");
   
   static CommandConfig create_command(const std::string &name,
-                                     const std::vector<uint8_t> &base_command,
-                                     uint8_t value_position,
-                                     float min_value, float max_value,
+                                     uint8_t byte_position,
+                                     CommandEncoding encoding,
                                      const std::string &description = "");
 };
 
