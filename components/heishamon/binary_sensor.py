@@ -197,6 +197,22 @@ HEISHA_BINARY_TOPICS = {
         "icon": "mdi:pump"
     },
     
+    # TOP125 - Two-Way Valve State
+    "two_way_valve_state": {
+        "name": "Two-Way Valve State",
+        "topic_id": 125,
+        "device_class": None,
+        "icon": "mdi:valve"
+    },
+    
+    # TOP126 - Three-Way Valve State 2
+    "three_way_valve_state2": {
+        "name": "Three-Way Valve State 2",
+        "topic_id": 126,
+        "device_class": None,
+        "icon": "mdi:valve"
+    },
+    
     # Derived: Pump Running (from pump speed > 0)
     "pump_running": {
         "name": "Pump Running",
@@ -229,6 +245,32 @@ HEISHA_BINARY_TOPICS = {
         "topic_id": 133,
         "device_class": None,
         "icon": "mdi:water-boiler"
+    },
+    
+    # ============== ADDITIONAL CONTROL STATES ==============
+    
+    # TOP139 - Heating Control
+    "heating_control": {
+        "name": "Heating Control",
+        "topic_id": 139,
+        "device_class": None,
+        "icon": "mdi:thermostat"
+    },
+    
+    # TOP140 - Smart DHW
+    "smart_dhw": {
+        "name": "Smart DHW",
+        "topic_id": 140,
+        "device_class": None,
+        "icon": "mdi:water-boiler-auto"
+    },
+    
+    # TOP141 - Quiet Mode Priority
+    "quiet_mode_priority": {
+        "name": "Quiet Mode Priority",
+        "topic_id": 141,
+        "device_class": None,
+        "icon": "mdi:volume-off"
     },
     
     # ============== OPTIONAL PCB SENSORS (OPT0-OPT6) ==============

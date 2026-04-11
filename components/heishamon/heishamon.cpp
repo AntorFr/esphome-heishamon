@@ -828,16 +828,16 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       this->callback_manager_->notify_binary_sensor_value("defrosting_state", defrosting);
     }
     
-    // Internal Heater State (byte 112, bits 7&8) - TOP60
+    // Internal Heater State (byte 112, bits 7&8 = lowest 2 bits, getBit7and8) - TOP60
     if (this->callback_manager_->has_binary_sensor_callback("internal_heater_state")) {
-      int internal_heater_value = (data[112] >> 6) - 1;
+      int internal_heater_value = (data[112] & 0b11) - 1;
       bool internal_heater = (internal_heater_value > 0);
       this->callback_manager_->notify_binary_sensor_value("internal_heater_state", internal_heater);
     }
     
-    // External Heater State (byte 112, bits 5&6) - TOP61
+    // External Heater State (byte 112, bits 5&6, getBit5and6) - TOP61
     if (this->callback_manager_->has_binary_sensor_callback("external_heater_state")) {
-      int external_heater_value = ((data[112] >> 4) & 0b11) - 1;
+      int external_heater_value = ((data[112] >> 2) & 0b11) - 1;
       bool external_heater = (external_heater_value > 0);
       this->callback_manager_->notify_binary_sensor_value("external_heater_state", external_heater);
     }
@@ -919,23 +919,20 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
 
     // === SWITCHES ===
     
-    // Force DHW Mode (byte 112, bits 7&8) 
-    // Also extract DHW operating mode
+    // Force DHW Switch (byte 4, bits 1&2 = top 2 bits, getBit1and2) - TOP2
     {
-      float force_dhw_value = ((data[112] >> 6) - 1);
-      bool force_dhw = (force_dhw_value > 0);
-      this->dhw_mode_ = static_cast<int>(force_dhw_value);  // Store for water heater component
-      ESP_LOGV(TAG, "Force DHW Switch: byte=0x%02X, state=%s", data[112], force_dhw ? "ON" : "OFF");
+      bool force_dhw = (data[4] & 0x80) != 0;  // Bit 7 (MSB) indicates active
+      ESP_LOGV(TAG, "Force DHW Switch: byte=0x%02X, state=%s", data[4], force_dhw ? "ON" : "OFF");
       if (this->callback_manager_->has_switch_callback("force_dhw")) {
         this->callback_manager_->notify_switch_value("force_dhw", force_dhw);
       }
     }
 
-    // Holiday mode (byte 113, bits 5&6)
+    // Holiday mode (byte 5, bits 3&4, getBit3and4) - TOP19
     if (this->callback_manager_->has_switch_callback("holiday_mode")) {
-      float holiday_mode_value = (((data[113] >> 2) & 0b11) - 1);
+      int holiday_mode_value = ((data[5] >> 4) & 0b11) - 1;
       bool holiday_mode = (holiday_mode_value > 0);
-      ESP_LOGV(TAG, "Holiday Mode Switch: byte=0x%02X, state=%s", data[113], holiday_mode ? "ON" : "OFF");
+      ESP_LOGV(TAG, "Holiday Mode Switch: byte=0x%02X, state=%s", data[5], holiday_mode ? "ON" : "OFF");
       this->callback_manager_->notify_switch_value("holiday_mode", holiday_mode);
     }
 
@@ -956,10 +953,10 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       }
     }
     
-    // Zones State (byte 5, bits 5&6) - TOP94 and climate zone tracking
+    // Zones State (byte 6, bits 1&2 = top 2 bits, getBit1and2) - TOP94 and climate zone tracking
     {
-      // getBit5and6 = ((input >> 2) & 0b11) - 1, result: 0=Zone1, 1=Zone2, 2=Both
-      uint8_t zones_value = (((data[5] >> 2) & 0b11) - 1);
+      // getBit1and2 = (input >> 6) - 1, result: 0=Zone1, 1=Zone2, 2=Both
+      uint8_t zones_value = ((data[6] >> 6) - 1);
       
       // Update zone enable states for climate
       // 0 = Zone 1 only, 1 = Zone 2 only, 2 = Both zones
@@ -969,28 +966,40 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       this->zone2_cool_enabled_ = (zones_value == 1 || zones_value == 2) && this->cool_mode_enabled_;
       
       ESP_LOGV(TAG, "Zones state: raw=0x%02X, value=%d, z1_heat=%d, z2_heat=%d, z1_cool=%d, z2_cool=%d",
-               data[5], zones_value, this->zone1_heat_enabled_, this->zone2_heat_enabled_,
+               data[6], zones_value, this->zone1_heat_enabled_, this->zone2_heat_enabled_,
                this->zone1_cool_enabled_, this->zone2_cool_enabled_);
+      
+      // Notify zones select
+      if (this->callback_manager_->has_select_callback("zones_state")) {
+        static const char* zones_names[] = {"Zone 1 only", "Zone 2 only", "Zone 1 + Zone 2"};
+        if (zones_value <= 2) {
+          this->callback_manager_->notify_select_value("zones_state", zones_names[zones_value]);
+        }
+      }
     }
     
-    // Quiet Mode and Powerful Mode (byte 7) - TOP18 + TOP17
-    // Left 5 bits = Quiet Mode level (uses getLeft5bits: (value >> 3) - 1)
-    // Right 3 bits = Powerful Mode level (uses getRight3bits: (value & 0b111) - 1)
+    // Quiet Mode and Powerful Mode (byte 7) - TOP3 + TOP18 + TOP17
+    // Bits 1-2 (top 2): Quiet Mode Schedule (TOP3, getBit1and2)
+    // Bits 3-5 (middle 3): Quiet Mode Level (TOP18, getBit3and4and5)
+    // Bits 6-8 (bottom 3): Powerful Mode Time (TOP17, getRight3bits)
     {
-      uint8_t quiet_level = ((data[7] >> 3) & 0b11111) - 1;  // Top 5 bits, then -1
-      uint8_t power_level = (data[7] & 0b111) - 1;            // Bottom 3 bits, then -1
+      bool quiet_scheduled = ((data[7] >> 6) - 1) > 0;       // TOP3: getBit1and2
+      uint8_t quiet_level = ((data[7] >> 3) & 0b111) - 1;    // TOP18: getBit3and4and5
+      uint8_t power_level = (data[7] & 0b111) - 1;            // TOP17: getRight3bits
       
-      // Decode Quiet Mode (TOP18)
-      // Values after -1: 0=Off, 1=Level1, 2=Level2, 3=Level3, 16=Scheduled
+      // Decode Quiet Mode (TOP18) with schedule override (TOP3)
       if (this->callback_manager_->has_select_callback("quiet_mode_level")) {
         std::string quiet_mode;
-        switch (quiet_level) {
-          case 0: quiet_mode = "Off"; break;
-          case 1: quiet_mode = "Level 1"; break;
-          case 2: quiet_mode = "Level 2"; break;
-          case 3: quiet_mode = "Level 3"; break;
-          case 16: quiet_mode = "Scheduled"; break;
-          default: quiet_mode = "Off"; break;  // Safe default
+        if (quiet_scheduled) {
+          quiet_mode = "Scheduled";
+        } else {
+          switch (quiet_level) {
+            case 0: quiet_mode = "Off"; break;
+            case 1: quiet_mode = "Level 1"; break;
+            case 2: quiet_mode = "Level 2"; break;
+            case 3: quiet_mode = "Level 3"; break;
+            default: quiet_mode = "Off"; break;
+          }
         }
         this->callback_manager_->notify_select_value("quiet_mode_level", quiet_mode);
       }
@@ -1061,6 +1070,280 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
       uint8_t room_heater_value = data[9] & 0b11;
       std::string room_heater = (room_heater_value == 0b10) ? "Free" : "Blocked";
       this->callback_manager_->notify_select_value("room_heater_state", room_heater);
+    }
+    
+    // === ADDITIONAL BINARY SENSOR READ-BACKS ===
+    
+    // Quiet Mode Schedule (byte 7, bits 1&2, getBit1and2) - TOP3
+    if (this->callback_manager_->has_binary_sensor_callback("quiet_mode_schedule")) {
+      bool quiet_schedule = ((data[7] >> 6) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("quiet_mode_schedule", quiet_schedule);
+    }
+    
+    // Main Schedule State (byte 5, bits 1&2, getBit1and2) - TOP13
+    {
+      bool main_schedule = ((data[5] >> 6) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("main_schedule_state")) {
+        this->callback_manager_->notify_binary_sensor_value("main_schedule_state", main_schedule);
+      }
+      if (this->callback_manager_->has_switch_callback("main_schedule_state")) {
+        this->callback_manager_->notify_switch_value("main_schedule_state", main_schedule);
+      }
+    }
+    
+    // DHW Heater State binary (byte 9, bits 5&6, getBit5and6) - TOP58
+    if (this->callback_manager_->has_binary_sensor_callback("dhw_heater_state")) {
+      bool dhw_heater_active = (((data[9] >> 2) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("dhw_heater_state", dhw_heater_active);
+    }
+    
+    // Room Heater State binary (byte 9, bits 7&8, getBit7and8) - TOP59
+    if (this->callback_manager_->has_binary_sensor_callback("room_heater_state")) {
+      bool room_heater_active = ((data[9] & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("room_heater_state", room_heater_active);
+    }
+    
+    // Force Heater State (byte 5, bits 5&6, getBit5and6) - TOP68
+    if (this->callback_manager_->has_binary_sensor_callback("force_heater_state")) {
+      bool force_heater = (((data[5] >> 2) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("force_heater_state", force_heater);
+    }
+    
+    // Sterilization State (byte 117, bits 5&6, getBit5and6) - TOP69
+    {
+      bool sterilization = (((data[117] >> 2) & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("sterilization_state")) {
+        this->callback_manager_->notify_binary_sensor_value("sterilization_state", sterilization);
+      }
+      if (this->callback_manager_->has_switch_callback("sterilization")) {
+        this->callback_manager_->notify_switch_value("sterilization", sterilization);
+      }
+    }
+    
+    // Heatpump State switch (byte 4, reuse binary decode) - TOP0
+    if (this->callback_manager_->has_switch_callback("heatpump_state")) {
+      bool heatpump_on = (data[4] & 0b11) == 0b10;
+      this->callback_manager_->notify_switch_value("heatpump_state", heatpump_on);
+    }
+    
+    // Quiet Mode switch (byte 7, on if level > 0) - TOP18
+    if (this->callback_manager_->has_switch_callback("quiet_mode")) {
+      uint8_t ql = ((data[7] >> 3) & 0b111) - 1;
+      this->callback_manager_->notify_switch_value("quiet_mode", ql > 0 && ql <= 3);
+    }
+    
+    // === BYTE 20 READ-BACKS ===
+    
+    // Liquid Type select (byte 20, bit 1 = MSB, getBit1) - TOP107
+    if (this->callback_manager_->has_select_callback("liquid_type")) {
+      std::string liquid = (data[20] >> 7) ? "Glycol" : "Water";
+      this->callback_manager_->notify_select_value("liquid_type", liquid);
+    }
+    
+    // Alt External Sensor (byte 20, bits 3&4, getBit3and4) - TOP108
+    {
+      bool alt_sensor = (((data[20] >> 4) & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("alt_external_sensor")) {
+        this->callback_manager_->notify_binary_sensor_value("alt_external_sensor", alt_sensor);
+      }
+      if (this->callback_manager_->has_switch_callback("alt_external_sensor")) {
+        this->callback_manager_->notify_switch_value("alt_external_sensor", alt_sensor);
+      }
+    }
+    
+    // Anti Freeze Mode (byte 20, bits 5&6, getBit5and6) - TOP109
+    if (this->callback_manager_->has_binary_sensor_callback("anti_freeze_mode")) {
+      bool anti_freeze = (((data[20] >> 2) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("anti_freeze_mode", anti_freeze);
+    }
+    
+    // Optional PCB (byte 20, bits 7&8, getBit7and8) - TOP110
+    if (this->callback_manager_->has_binary_sensor_callback("optional_pcb")) {
+      bool opt_pcb = ((data[20] & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("optional_pcb", opt_pcb);
+    }
+    
+    // === BYTE 23 READ-BACKS (External Controls) ===
+    
+    // External Control (byte 23, bits 7&8, getBit7and8) - TOP119
+    {
+      bool ext_control = ((data[23] & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("external_control")) {
+        this->callback_manager_->notify_binary_sensor_value("external_control", ext_control);
+      }
+      if (this->callback_manager_->has_switch_callback("external_control")) {
+        this->callback_manager_->notify_switch_value("external_control", ext_control);
+      }
+    }
+    
+    // External Heat Cool Control (byte 23, bits 5&6, getBit5and6) - TOP120
+    {
+      bool ext_heat_cool = (((data[23] >> 2) & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("external_heat_cool_control")) {
+        this->callback_manager_->notify_binary_sensor_value("external_heat_cool_control", ext_heat_cool);
+      }
+      if (this->callback_manager_->has_switch_callback("external_heat_cool_control")) {
+        this->callback_manager_->notify_switch_value("external_heat_cool_control", ext_heat_cool);
+      }
+    }
+    
+    // External Error Signal (byte 23, bits 3&4, getBit3and4) - TOP121
+    {
+      bool ext_error = (((data[23] >> 4) & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("external_error_signal")) {
+        this->callback_manager_->notify_binary_sensor_value("external_error_signal", ext_error);
+      }
+      if (this->callback_manager_->has_switch_callback("external_error_signal")) {
+        this->callback_manager_->notify_switch_value("external_error_signal", ext_error);
+      }
+    }
+    
+    // External Compressor Control (byte 23, bits 1&2, getBit1and2) - TOP122
+    {
+      bool ext_compressor = ((data[23] >> 6) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("external_compressor_control")) {
+        this->callback_manager_->notify_binary_sensor_value("external_compressor_control", ext_compressor);
+      }
+      if (this->callback_manager_->has_switch_callback("external_compressor_control")) {
+        this->callback_manager_->notify_switch_value("external_compressor_control", ext_compressor);
+      }
+    }
+    
+    // === BYTE 24 READ-BACKS ===
+    
+    // Solar Mode select (byte 24, bits 3&4, getBit3and4) - TOP101
+    if (this->callback_manager_->has_select_callback("solar_mode")) {
+      int solar_value = ((data[24] >> 4) & 0b11) - 1;
+      static const char* solar_names[] = {"Disabled", "Buffer", "DHW"};
+      if (solar_value >= 0 && solar_value <= 2) {
+        this->callback_manager_->notify_select_value("solar_mode", solar_names[solar_value]);
+      }
+    }
+    
+    // Buffer Installed (byte 24, bits 5&6, getBit5and6) - TOP99
+    {
+      bool buffer_inst = (((data[24] >> 2) & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("buffer_installed")) {
+        this->callback_manager_->notify_binary_sensor_value("buffer_installed", buffer_inst);
+      }
+      if (this->callback_manager_->has_switch_callback("buffer_installed")) {
+        this->callback_manager_->notify_switch_value("buffer_installed", buffer_inst);
+      }
+    }
+    
+    // Smart DHW (byte 24, bits 1&2, getBit1and2) - TOP140
+    if (this->callback_manager_->has_binary_sensor_callback("smart_dhw")) {
+      bool smart_dhw = ((data[24] >> 6) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("smart_dhw", smart_dhw);
+    }
+    
+    // === BYTE 25 READ-BACK ===
+    
+    // External Pad Heater select (byte 25, bits 3&4, getBit3and4) - TOP114
+    if (this->callback_manager_->has_select_callback("external_pad_heater")) {
+      int pad_value = ((data[25] >> 4) & 0b11) - 1;
+      static const char* pad_names[] = {"Disabled", "Type-A", "Type-B"};
+      if (pad_value >= 0 && pad_value <= 2) {
+        this->callback_manager_->notify_select_value("external_pad_heater", pad_names[pad_value]);
+      }
+    }
+    
+    // === BYTE 26 READ-BACKS (Bivalent) ===
+    
+    // Bivalent Control (byte 26, bits 7&8, getBit7and8) - TOP129
+    {
+      bool biv_control = ((data[26] & 0b11) - 1) > 0;
+      if (this->callback_manager_->has_binary_sensor_callback("bivalent_control")) {
+        this->callback_manager_->notify_binary_sensor_value("bivalent_control", biv_control);
+      }
+      if (this->callback_manager_->has_switch_callback("bivalent_control")) {
+        this->callback_manager_->notify_switch_value("bivalent_control", biv_control);
+      }
+    }
+    
+    // Bivalent Mode select (byte 26, bits 5&6, getBit5and6) - TOP130
+    if (this->callback_manager_->has_select_callback("bivalent_mode")) {
+      int biv_mode = ((data[26] >> 2) & 0b11) - 1;
+      static const char* biv_names[] = {"Alternative", "Parallel", "Advanced Parallel"};
+      if (biv_mode >= 0 && biv_mode <= 2) {
+        this->callback_manager_->notify_select_value("bivalent_mode", biv_names[biv_mode]);
+      }
+    }
+    
+    // Bivalent Advanced Heat (byte 26, bits 3&4, getBit3and4) - TOP132
+    if (this->callback_manager_->has_binary_sensor_callback("bivalent_advanced_heat")) {
+      bool biv_heat = (((data[26] >> 4) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("bivalent_advanced_heat", biv_heat);
+    }
+    
+    // Bivalent Advanced DHW (byte 26, bits 1&2, getBit1and2) - TOP133
+    if (this->callback_manager_->has_binary_sensor_callback("bivalent_advanced_dhw")) {
+      bool biv_dhw = ((data[26] >> 6) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("bivalent_advanced_dhw", biv_dhw);
+    }
+    
+    // === BYTE 28 READ-BACKS ===
+    
+    // Heating Mode select (byte 28, bits 7&8, getBit7and8) - TOP76
+    if (this->callback_manager_->has_select_callback("heating_mode")) {
+      int heating = (data[28] & 0b11) - 1;
+      std::string mode = (heating == 1) ? "Direct" : "Compensation curve";
+      this->callback_manager_->notify_select_value("heating_mode", mode);
+    }
+    
+    // Cooling Mode select (byte 28, bits 5&6, getBit5and6) - TOP81
+    if (this->callback_manager_->has_select_callback("cooling_mode")) {
+      int cooling = ((data[28] >> 2) & 0b11) - 1;
+      std::string mode = (cooling == 1) ? "Direct" : "Compensation curve";
+      this->callback_manager_->notify_select_value("cooling_mode", mode);
+    }
+    
+    // === OTHER READ-BACKS ===
+    
+    // Pump Flowrate Mode select (byte 29, bits 3&4, getBit3and4) - TOP106
+    if (this->callback_manager_->has_select_callback("pump_flowrate_mode")) {
+      int pump_mode = ((data[29] >> 4) & 0b11) - 1;
+      std::string mode = (pump_mode == 1) ? "Max flow" : "DeltaT";
+      this->callback_manager_->notify_select_value("pump_flowrate_mode", mode);
+    }
+    
+    // Holiday Mode State select (byte 5, bits 3&4, getBit3and4) - TOP19
+    if (this->callback_manager_->has_select_callback("holiday_mode_state")) {
+      int holiday = ((data[5] >> 4) & 0b11) - 1;
+      static const char* holiday_names[] = {"Off", "Scheduled", "Active"};
+      if (holiday >= 0 && holiday <= 2) {
+        this->callback_manager_->notify_select_value("holiday_mode_state", holiday_names[holiday]);
+      }
+    }
+    
+    // Quiet Mode Priority (byte 11, bits 3&4, getBit3and4) - TOP141
+    if (this->callback_manager_->has_binary_sensor_callback("quiet_mode_priority")) {
+      bool quiet_priority = (((data[11] >> 4) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("quiet_mode_priority", quiet_priority);
+    }
+    
+    // Heating Control (byte 30, bits 5&6, getBit5and6) - TOP139
+    if (this->callback_manager_->has_binary_sensor_callback("heating_control")) {
+      bool heating_ctrl = (((data[30] >> 2) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("heating_control", heating_ctrl);
+    }
+    
+    // Two-Way Valve State (byte 116, bits 5&6, getBit5and6) - TOP125
+    if (this->callback_manager_->has_binary_sensor_callback("two_way_valve_state")) {
+      bool two_way = (((data[116] >> 2) & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("two_way_valve_state", two_way);
+    }
+    
+    // Three-Way Valve State 2 (byte 116, bits 7&8, getBit7and8) - TOP126
+    if (this->callback_manager_->has_binary_sensor_callback("three_way_valve_state2")) {
+      bool three_way2 = ((data[116] & 0b11) - 1) > 0;
+      this->callback_manager_->notify_binary_sensor_value("three_way_valve_state2", three_way2);
+    }
+    
+    // Expansion Valve (byte 175: value - 1, getIntMinus1) - TOP142
+    if (this->callback_manager_->has_sensor_callback("expansion_valve")) {
+      float expansion_valve = static_cast<float>(data[175] - 1);
+      this->callback_manager_->notify_sensor_value("expansion_valve", expansion_valve);
     }
     
     // === NOTIFY CLIMATE COMPONENTS ===

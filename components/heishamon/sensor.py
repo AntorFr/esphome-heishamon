@@ -915,6 +915,15 @@ HEISHA_TOPICS = {
     
     # ============== CALCULATED ==============
     
+    # TOP142 - Expansion Valve
+    "expansion_valve": {
+        "name": "Expansion Valve",
+        "topic_id": 142,
+        "unit": "", 
+        "device_class": None,
+        "icon": "mdi:valve"
+    },
+    
     # COP (coefficient of performance) - calculated from power data
     "cop": {
         "name": "COP",
