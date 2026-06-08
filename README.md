@@ -2,7 +2,7 @@
 
 Native ESPHome component for Panasonic Aquarea heat pumps, based on the original [HeishaMon](https://github.com/Egyras/HeishaMon) project.
 
-**Protocol compatibility: up to date with HeishaMon v4.1.3** (v4.1.3 upstream fix only concerns the Optional PCB emulation `/command` web API, which is not part of this ESPHome port — no porting required).
+**Protocol compatibility: up to date with HeishaMon v4.1.6** (v4.1.4 → v4.1.6 upstream releases contain no protocol changes — the command/topic encoding in `decode.h` and `commands.h` is unchanged. Their fixes only touch log message formatting, the WiFi captive portal, and the internal rules engine, none of which are part of this ESPHome port — no porting required).
 
 **Minimum required ESPHome version: 2026.3.0**
 
