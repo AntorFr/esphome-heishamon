@@ -188,10 +188,26 @@ See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor
 
 ### Switches (switch platform)
 
-| Topic | Description |
-|-------|-------------|
-| `force_dhw` | Force DHW Heating |
-| `quiet_mode` | Toggle Quiet Mode |
+Switches reflect the pump state and, in active mode (`listen_only: false`), send
+their SET command when toggled (ON sends value 1, OFF sends 0).
+
+| Topic | Description | Command on toggle |
+|-------|-------------|-------------------|
+| `force_dhw` | Force DHW Heating | `SetForceDHW` |
+| `quiet_mode` | Quiet Mode (ON = level 1) | `SetQuietMode` |
+| `holiday_mode` | Holiday Mode | `SetHolidayMode` |
+| `heatpump_state` | Heat Pump On/Off | `SetHeatpump` |
+| `sterilization` | Force Sterilization | `SetForceSterilization` |
+| `main_schedule_state` | Main Thermostat Schedule | `SetMainSchedule` |
+| `alt_external_sensor` | External Outdoor Sensor | `SetAltExternalSensor` |
+| `external_control` | External Control | `SetExternalControl` |
+| `external_error_signal` | External Error Signal | `SetExternalError` |
+| `external_compressor_control` | External Compressor Control | `SetExternalCompressorControl` |
+| `external_heat_cool_control` | External Heat/Cool Control | `SetExternalHeatCoolControl` |
+| `bivalent_control` | Bivalent Control | `SetBivalentControl` |
+| `buffer_installed` | Buffer Tank Installed | `SetBuffer` |
+
+Topics without a command (`relay_1`, `relay_2`, …) are read-only state displays.
 
 ### Text Sensors (text_sensor platform)
 

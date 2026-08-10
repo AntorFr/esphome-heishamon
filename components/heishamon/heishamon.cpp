@@ -51,26 +51,26 @@ void HeishamonComponent::loop() {
     this->protocol_->process_loop();
   }
   
-  // Send periodic queries
-  if ((now - this->last_run_time_) > this->update_interval_) {
-    this->last_run_time_ = now;
-    
-    if (!this->listen_only_ && this->protocol_) {
+  if (!this->listen_only_ && this->protocol_) {
+    // Send periodic queries
+    if ((now - this->last_run_time_) > this->update_interval_) {
+      this->last_run_time_ = now;
+
       // Send initial query first time only
-      static bool initial_query_sent = false;
-      if (!initial_query_sent) {
+      if (!this->initial_query_sent_) {
         ESP_LOGI(TAG, "Sending initial query to heatpump");
         this->protocol_->send_initial_query();
-        initial_query_sent = true;
+        this->initial_query_sent_ = true;
       } else {
         this->protocol_->send_panasonic_query();
-        
-        // Send optional PCB query if enabled
-        if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
-          this->last_optional_pcb_time_ = now;
-          this->protocol_->send_optional_pcb_query();
-        }
       }
+    }
+
+    // Optional PCB keep-alive: the pump expects this every second, so it
+    // must run independently of the (much longer) update interval
+    if (this->optional_pcb_ && (now - this->last_optional_pcb_time_) > 1000) {
+      this->last_optional_pcb_time_ = now;
+      this->protocol_->send_optional_pcb_query();
     }
   }
 }
@@ -1427,15 +1427,15 @@ void HeishamonComponent::send_command(const std::string &command, const std::str
   this->send_command(command, static_cast<uint8_t>(int_value));
 }
 
-void HeishamonComponent::send_command(const std::string &command, uint8_t value) {
+bool HeishamonComponent::send_command(const std::string &command, uint8_t value) {
   ESP_LOGD(TAG, "Send command: %s = %d", command.c_str(), value);
   auto config = HeishamonTopics::get_command_config(command);
   if (config.name.empty()) {
     ESP_LOGW(TAG, "Unknown command: %s", command.c_str());
-    return;
+    return false;
   }
   auto packet = HeishamonTopics::encode_command(config, static_cast<int>(value));
-  this->send_command(packet);
+  return this->send_command(packet);
 }
 
 void HeishamonComponent::create_command(const std::string &command, uint8_t value) {

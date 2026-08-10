@@ -89,7 +89,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Command sending functions
   void send_command(const std::string &command);
   void send_command(const std::string &command, const std::string &value);
-  void send_command(const std::string &command, uint8_t value);
+  bool send_command(const std::string &command, uint8_t value);
   bool send_command(const std::vector<uint8_t> &command);
   void create_command(const std::string &command, uint8_t value);
   bool send_number_command(const std::string &command, float value);
@@ -165,6 +165,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   // Timing
   uint32_t last_run_time_{0};
   uint32_t last_optional_pcb_time_{0};
+  bool initial_query_sent_{false};
   
   // Optional components - only defined if the component is used
 #ifdef USE_CLIMATE

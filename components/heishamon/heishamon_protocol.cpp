@@ -261,9 +261,17 @@ void HeishamonProtocol::push_command_buffer(const std::vector<uint8_t> &command)
     ESP_LOGW(TAG, "Command buffer full, dropping command");
     return;
   }
-  
+
+  if (command.size() > sizeof(CommandBuffer::data)) {
+    // Never truncate: a partial packet would be sent with a recomputed
+    // checksum and reach the heat pump as a malformed frame
+    ESP_LOGE(TAG, "Command size %u exceeds buffer slot (%u), dropping command",
+             (unsigned) command.size(), (unsigned) sizeof(CommandBuffer::data));
+    return;
+  }
+
   CommandBuffer &cmd = this->command_buffer_[this->cmd_end_];
-  cmd.size = std::min(command.size(), sizeof(cmd.data));
+  cmd.size = command.size();
   std::copy(command.begin(), command.begin() + cmd.size, cmd.data);
   
   this->cmd_end_ = (this->cmd_end_ + 1) % MAXCOMMANDSINBUFFER;

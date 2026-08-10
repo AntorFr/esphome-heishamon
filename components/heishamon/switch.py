@@ -9,9 +9,9 @@ CODEOWNERS = ["@AntorFR"]
 
 HeishamonSwitch = heishamon_ns.class_("HeishamonSwitch", switch.Switch)
 
-# Topics for switches (read-only states mapped from pump data)
+# Topics for switches (states mapped from pump data)
 HEISHA_SWITCH_TOPICS = {
-    # Basic switches (Phase 1) - These are READ-ONLY states from pump
+    # Basic switches (Phase 1)
     "force_dhw": "Force DHW Mode Active",
     "holiday_mode": "Holiday Mode Active", 
     "heatpump_state": "Heat Pump State",
@@ -33,6 +33,25 @@ HEISHA_SWITCH_TOPICS = {
     "relay_2": "Relay 2 State",
 }
 
+# Topics that can also be controlled: SET command sent on toggle
+# (value 1 on ON, 0 on OFF; for quiet_mode ON means level 1).
+# Topics not listed here stay read-only (state display only).
+HEISHA_SWITCH_COMMANDS = {
+    "force_dhw": "SetForceDHW",
+    "holiday_mode": "SetHolidayMode",
+    "heatpump_state": "SetHeatpump",
+    "sterilization": "SetForceSterilization",
+    "quiet_mode": "SetQuietMode",
+    "main_schedule_state": "SetMainSchedule",
+    "alt_external_sensor": "SetAltExternalSensor",
+    "external_control": "SetExternalControl",
+    "external_error_signal": "SetExternalError",
+    "external_compressor_control": "SetExternalCompressorControl",
+    "external_heat_cool_control": "SetExternalHeatCoolControl",
+    "bivalent_control": "SetBivalentControl",
+    "buffer_installed": "SetBuffer",
+}
+
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(HeishamonSwitch),
@@ -46,8 +65,14 @@ async def to_code(config):
     await switch.register_switch(var, config)
 
     parent = await cg.get_variable(config["heishamon_id"])
-    
-    # Register the callback with the parent (read-only switches)
+    cg.add(var.set_parent(parent))
+
+    # Controllable topics get their SET command; others stay read-only
+    command = HEISHA_SWITCH_COMMANDS.get(config["topic"])
+    if command is not None:
+        cg.add(var.set_command(command))
+
+    # Register the state callback with the parent
     cg.add(parent.register_switch_callback(
         config["topic"],
         cg.RawExpression(f"[=](bool value) {{ {var}->publish_state(value); }}")

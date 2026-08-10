@@ -18,8 +18,9 @@ static const int SERIALTIMEOUT = 2900;
 static const int MAXCOMMANDSINBUFFER = 10;
 
 // Command buffer structure
+// Slots must hold full 110-byte command packets (PANASONICQUERYSIZE)
 struct CommandBuffer {
-  uint8_t data[20];
+  uint8_t data[PANASONICQUERYSIZE];
   size_t size;
 };
 
