@@ -14,7 +14,14 @@ vérifiés contre l'upstream Egyras/HeishaMon.
 SetDHWMode » si on change le mode ; seuls OFF (SetForceDHW=0) et la consigne
 (SetDHWTemp) agissent.
 
+**⚠️ Bloquant matériel (2026-08-10 soir) :** firmware actif flashé et fonctionnel
+(queries émises toutes les 30 s), mais la PAC ne répond **pas** — zéro octet reçu,
+timeout à chaque cycle. Côté soft tout est vérifié (paquets identiques à l'upstream,
+checksum, UART 9600 8E1 GPIO17/18). À vérifier côté câblage : TX/RX croisés ?
+interface 5 V (le level-shifter du HeishaMon a disparu du bus avec lui) ? GND commun ?
+
 **Prochaines étapes :**
-- [ ] Valider en réel les commandes SET (Force DHW, setpoints) maintenant que le mode actif est en service
+- [ ] Débloquer la liaison CN-CNT (câblage/interface 5 V) — la PAC ne répond pas aux queries
+- [ ] Valider en réel les commandes SET (Force DHW, setpoints) une fois la liaison rétablie
 - [ ] Implémenter le décodage des trames « extra » (0x21) et optional PCB (0xF1) — TODO dans `on_protocol_data_received`
 - [ ] Taguer une release vX.Y.Z pour épingler les devices (actuellement `ref: dev`)
