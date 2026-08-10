@@ -28,6 +28,13 @@ void HeishamonComponent::setup() {
                this->callback_manager_->get_switch_callback_count(),
                this->callback_manager_->get_select_callback_count());
   
+  // TX driver enable (HeishaMon ESP32 ENABLEPIN): HIGH makes the board an
+  // active bus master, LOW keeps it electrically listen-only
+  if (this->tx_enable_pin_ != nullptr) {
+    this->tx_enable_pin_->setup();
+    this->tx_enable_pin_->digital_write(!this->listen_only_);
+  }
+
   // Initialize protocol layer with UART component
   this->protocol_ = new HeishamonProtocol(this);
   this->protocol_->set_listen_only(this->listen_only_);
@@ -80,6 +87,9 @@ void HeishamonComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "  Update interval: %u ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Listen only: %s", YESNO(this->listen_only_));
   ESP_LOGCONFIG(TAG, "  Optional PCB: %s", YESNO(this->optional_pcb_));
+  if (this->tx_enable_pin_ != nullptr) {
+    LOG_PIN("  TX enable pin: ", this->tx_enable_pin_);
+  }
 }
 
 void HeishamonComponent::on_protocol_data_received(const std::vector<uint8_t> &data, uint8_t data_type) {

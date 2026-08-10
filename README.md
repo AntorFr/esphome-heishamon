@@ -53,6 +53,7 @@ heishamon:
   uart_id: uart_bus
   update_interval: 30s
   listen_only: false  # true for CN-NMODE / CZ-TAW1 coexistence
+  tx_enable_pin: GPIO5  # HeishaMon ESP32 boards: gates the CN-CNT TX driver
   optional_pcb: false
 ```
 

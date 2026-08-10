@@ -14,11 +14,11 @@ vérifiés contre l'upstream Egyras/HeishaMon.
 SetDHWMode » si on change le mode ; seuls OFF (SetForceDHW=0) et la consigne
 (SetDHWTemp) agissent.
 
-**⚠️ Bloquant matériel (2026-08-10 soir) :** firmware actif flashé et fonctionnel
-(queries émises toutes les 30 s), mais la PAC ne répond **pas** — zéro octet reçu,
-timeout à chaque cycle. Côté soft tout est vérifié (paquets identiques à l'upstream,
-checksum, UART 9600 8E1 GPIO17/18). À vérifier côté câblage : TX/RX croisés ?
-interface 5 V (le level-shifter du HeishaMon a disparu du bus avec lui) ? GND commun ?
+**Gotcha carte HeishaMon ESP32 (résolu 2026-08-10) :** premier passage en actif =
+silence total de la PAC (queries émises, zéro octet reçu). Cause : le driver TX vers
+le CN-CNT est **gaté par GPIO5** (`ENABLEPIN` dans le firmware upstream — HIGH = actif,
+LOW = listen-only) et notre firmware ne le pilotait pas. Fix : option `tx_enable_pin`
+du composant (pilotée selon `listen_only`), `tx_enable_pin: GPIO5` dans le YAML device.
 
 **Prochaines étapes :**
 - [ ] Débloquer la liaison CN-CNT (câblage/interface 5 V) — la PAC ne répond pas aux queries

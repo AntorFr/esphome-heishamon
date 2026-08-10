@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esphome/core/component.h"
+#include "esphome/core/gpio.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/log.h"
 #include "heishamon_protocol.h"
@@ -72,12 +73,13 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
       this->protocol_->set_listen_only(listen_only);
     }
   }
-  void set_optional_pcb(bool optional_pcb) { 
-    this->optional_pcb_ = optional_pcb; 
+  void set_optional_pcb(bool optional_pcb) {
+    this->optional_pcb_ = optional_pcb;
     if (this->protocol_) {
       this->protocol_->set_optional_pcb(optional_pcb);
     }
   }
+  void set_tx_enable_pin(GPIOPin *pin) { this->tx_enable_pin_ = pin; }
 
   // Public functions for sensors
   void register_sensor_callback(const std::string &topic, std::function<void(float)> &&callback);
@@ -161,6 +163,7 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   uint32_t update_interval_{15000};
   bool listen_only_{false};
   bool optional_pcb_{false};
+  GPIOPin *tx_enable_pin_{nullptr};
   
   // Timing
   uint32_t last_run_time_{0};
