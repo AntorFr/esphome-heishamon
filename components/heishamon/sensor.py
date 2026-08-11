@@ -959,7 +959,11 @@ async def to_code(config):
     if topic_config.get("device_class") and "device_class" not in config:
         schema_kwargs["device_class"] = topic_config["device_class"]
     if topic_config.get("state_class") and "state_class" not in config:
-        schema_kwargs["state_class"] = topic_config["state_class"]
+        # state_class is a C++ enum, not a std::string like unit/device_class:
+        # inject the codegen enum object (MockObj<sensor::STATE_CLASS_*>) so
+        # codegen emits the enum, not a string literal that fails to compile.
+        sc_key = sensor.validate_state_class(topic_config["state_class"])
+        schema_kwargs["state_class"] = sensor.STATE_CLASSES[sc_key]
     if topic_config.get("icon") and "icon" not in config:
         schema_kwargs["icon"] = topic_config["icon"]
     if topic_config.get("accuracy_decimals") is not None and "accuracy_decimals" not in config:
