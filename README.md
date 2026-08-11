@@ -104,6 +104,13 @@ Connect to **CN-NMODE** port for passive monitoring:
 
 ## Hardware Wiring
 
+> ⚠️ **HeishaMon board CZ-TAW1 port**: this passthrough port is electrically
+> coupled to the CN-CNT bus. Do not leave another powered board (e.g. a
+> HeishaMon in listen-only mode, whose TX driver is disabled but still loads
+> the line) plugged into it: it can jam the bus entirely — the pump stops
+> answering queries. Unplug it, or expect collisions/silence. This firmware
+> does not (yet) implement proxy forwarding towards that port.
+
 ### ESP32
 
 | Function | GPIO | CN-CNT Pin |
