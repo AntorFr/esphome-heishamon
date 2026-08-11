@@ -395,8 +395,9 @@ HEISHA_TOPICS = {
     "heat_power_production": {
         "name": "Heat Power Production",
         "topic_id": 15,
-        "unit": UNIT_WATT, 
+        "unit": UNIT_WATT,
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:fire"
     },
     
@@ -406,6 +407,7 @@ HEISHA_TOPICS = {
         "topic_id": 16,
         "unit": UNIT_WATT, 
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:flash"
     },
     
@@ -415,6 +417,7 @@ HEISHA_TOPICS = {
         "topic_id": 40,
         "unit": UNIT_WATT, 
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:water-boiler"
     },
     
@@ -424,6 +427,7 @@ HEISHA_TOPICS = {
         "topic_id": 41,
         "unit": UNIT_WATT, 
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:flash"
     },
     
@@ -433,14 +437,16 @@ HEISHA_TOPICS = {
         "topic_id": "XTOP4",
         "unit": UNIT_WATT, 
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:snowflake"
     },
     
     "cool_power_consumption": {
         "name": "Cool Power Consumption",
         "topic_id": "XTOP1",
-        "unit": UNIT_WATT, 
+        "unit": UNIT_WATT,
         "device_class": DEVICE_CLASS_POWER,
+        "state_class": STATE_CLASS_MEASUREMENT,
         "icon": "mdi:flash"
     },
     
@@ -952,6 +958,8 @@ async def to_code(config):
         schema_kwargs["unit_of_measurement"] = topic_config["unit"]
     if topic_config.get("device_class") and "device_class" not in config:
         schema_kwargs["device_class"] = topic_config["device_class"]
+    if topic_config.get("state_class") and "state_class" not in config:
+        schema_kwargs["state_class"] = topic_config["state_class"]
     if topic_config.get("icon") and "icon" not in config:
         schema_kwargs["icon"] = topic_config["icon"]
     if topic_config.get("accuracy_decimals") is not None and "accuracy_decimals" not in config:
