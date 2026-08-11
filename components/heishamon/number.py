@@ -13,7 +13,7 @@ HEISHA_NUMBER_CONFIGS = {
     # Temperature controls (most important)
     "z1_heat_target_temp": {
         "name": "Zone 1 Heat Target Temperature",
-        "command": "SetZ1HeatTargetTemp",
+        "command": "SetZ1HeatRequestTemperature",
         "read_topic": "z1_heat_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
@@ -23,7 +23,7 @@ HEISHA_NUMBER_CONFIGS = {
     },
     "z2_heat_target_temp": {
         "name": "Zone 2 Heat Target Temperature", 
-        "command": "SetZ2HeatTargetTemp",
+        "command": "SetZ2HeatRequestTemperature",
         "read_topic": "z2_heat_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
@@ -33,7 +33,7 @@ HEISHA_NUMBER_CONFIGS = {
     },
     "z1_cool_target_temp": {
         "name": "Zone 1 Cool Target Temperature",
-        "command": "SetZ1CoolTargetTemp", 
+        "command": "SetZ1CoolRequestTemperature", 
         "read_topic": "z1_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
@@ -43,7 +43,7 @@ HEISHA_NUMBER_CONFIGS = {
     },
     "z2_cool_target_temp": {
         "name": "Zone 2 Cool Target Temperature",
-        "command": "SetZ2CoolTargetTemp",
+        "command": "SetZ2CoolRequestTemperature",
         "read_topic": "z2_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0, 
@@ -53,7 +53,7 @@ HEISHA_NUMBER_CONFIGS = {
     },
     "dhw_target_temp": {
         "name": "DHW Target Temperature",
-        "command": "SetDHWTargetTemp",
+        "command": "SetDHWTemp",
         "read_topic": "dhw_target_temp",  # Topic to read current value (exists!)
         "min_value": 40.0,
         "max_value": 65.0,
@@ -61,101 +61,20 @@ HEISHA_NUMBER_CONFIGS = {
         "unit": UNIT_CELSIUS,
         "device_class": "temperature"
     },
-    "main_target_temp": {
-        "name": "Main Target Temperature", 
-        "command": "SetMainTargetTemp",
-        "read_topic": "main_target_temp",  # Topic to read current value (exists!)
-        "min_value": 15.0,
-        "max_value": 30.0,
-        "step": 0.5,
-        "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
-    },
     
     # Temperature offsets
-    "room_temp_offset_z1": {
-        "name": "Room Temperature Offset Zone 1",
-        "command": "SetRoomTempOffsetZ1",
-        "min_value": -5.0,
-        "max_value": 5.0,
-        "step": 0.1,
-        "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
-    },
-    "room_temp_offset_z2": {
-        "name": "Room Temperature Offset Zone 2", 
-        "command": "SetRoomTempOffsetZ2",
-        "min_value": -5.0,
-        "max_value": 5.0,
-        "step": 0.1,
-        "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
-    },
     
     # Flow controls
-    "z1_water_flow": {
-        "name": "Zone 1 Water Flow Rate",
-        "command": "SetZ1WaterFlow",
-        "min_value": 5.0,
-        "max_value": 25.0,
-        "step": 1.0,
-        "unit": "L/min",
-        "device_class": None
-    },
-    "z2_water_flow": {
-        "name": "Zone 2 Water Flow Rate",
-        "command": "SetZ2WaterFlow", 
-        "min_value": 5.0,
-        "max_value": 25.0,
-        "step": 1.0,
-        "unit": "L/min",
-        "device_class": None
-    },
     
     # Pump controls
-    "pump_speed": {
-        "name": "Pump Speed",
-        "command": "SetPumpSpeed",
-        "min_value": 30.0,
-        "max_value": 100.0,
-        "step": 5.0,
-        "unit": "%",
-        "device_class": None
-    },
     
     # Timing controls  
-    "quiet_mode_start_time": {
-        "name": "Quiet Mode Start Time",
-        "command": "SetQuietModeStartTime",
-        "min_value": 0.0,
-        "max_value": 23.0,
-        "step": 1.0,
-        "unit": "h",
-        "device_class": None
-    },
-    "quiet_mode_end_time": {
-        "name": "Quiet Mode End Time",
-        "command": "SetQuietModeEndTime",
-        "min_value": 0.0,
-        "max_value": 23.0,
-        "step": 1.0,
-        "unit": "h", 
-        "device_class": None
-    },
-    "dhw_boost_time": {
-        "name": "DHW Boost Time",
-        "command": "SetDHWBoostTime",
-        "min_value": 10.0,
-        "max_value": 120.0,
-        "step": 10.0,
-        "unit": "min",
-        "device_class": None
-    },
     
     # Advanced controls
     "heating_curve_target_high": {
         "name": "Heating Curve Target High",
-        "command": "SetHeatingCurveTargetHigh",
+        "command": "SetZ1HeatCurveTargetHigh",
+        "read_topic": "z1_heat_curve_target_high",
         "min_value": 25.0,
         "max_value": 55.0,
         "step": 1.0,
@@ -164,7 +83,8 @@ HEISHA_NUMBER_CONFIGS = {
     },
     "heating_curve_target_low": {
         "name": "Heating Curve Target Low", 
-        "command": "SetHeatingCurveTargetLow",
+        "command": "SetZ1HeatCurveTargetLow",
+        "read_topic": "z1_heat_curve_target_low",
         "min_value": 25.0,
         "max_value": 55.0,
         "step": 1.0,
