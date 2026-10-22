@@ -13,11 +13,10 @@ HeishamonSwitch = heishamon_ns.class_("HeishamonSwitch", switch.Switch)
 HEISHA_SWITCH_TOPICS = {
     # Basic switches (Phase 1)
     "force_dhw": "Force DHW Mode Active",
-    "holiday_mode": "Holiday Mode Active", 
+    "holiday_mode": "Holiday Mode Active",
     "heatpump_state": "Heat Pump State",
     "sterilization": "Sterilization Active",
     "quiet_mode": "Quiet Mode Active",
-    
     # PHASE 2: Advanced switches from HA module (READ-ONLY)
     "buffer_installed": "Buffer Tank Installed",
     "external_control": "External Control Enabled",
@@ -27,7 +26,6 @@ HEISHA_SWITCH_TOPICS = {
     "bivalent_control": "Bivalent Control",
     "main_schedule_state": "Main Thermostat Schedule",
     "alt_external_sensor": "Use External Outdoor Sensor",
-    
     # GPIO control (for HeishaMon hardware)
     "relay_1": "Relay 1 State",
     "relay_2": "Relay 2 State",
@@ -60,6 +58,7 @@ CONFIG_SCHEMA = cv.Schema(
     }
 ).extend(switch.switch_schema(HeishamonSwitch))
 
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await switch.register_switch(var, config)
@@ -73,7 +72,9 @@ async def to_code(config):
         cg.add(var.set_command(command))
 
     # Register the state callback with the parent
-    cg.add(parent.register_switch_callback(
-        config["topic"],
-        cg.RawExpression(f"[=](bool value) {{ {var}->publish_state(value); }}")
-    ))
+    cg.add(
+        parent.register_switch_callback(
+            config["topic"],
+            cg.RawExpression(f"[=](bool value) {{ {var}->publish_state(value); }}"),
+        )
+    )

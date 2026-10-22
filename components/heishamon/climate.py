@@ -17,12 +17,18 @@ HeishaMonClimate = heishamon_ns.class_(
     "HeishaMonClimate", climate.Climate, cg.Component
 )
 
-CONFIG_SCHEMA = climate.climate_schema(HeishaMonClimate).extend({
-    cv.GenerateID(CONF_HEISHAMON_ID): cv.use_id(HeishamonComponent),
-    cv.Required(CONF_ZONE_ID): cv.int_range(min=1, max=2),
-    cv.Optional(CONF_SUPPORTS_HEAT, default=True): cv.boolean,
-    cv.Optional(CONF_SUPPORTS_COOL, default=False): cv.boolean,
-}).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = (
+    climate.climate_schema(HeishaMonClimate)
+    .extend(
+        {
+            cv.GenerateID(CONF_HEISHAMON_ID): cv.use_id(HeishamonComponent),
+            cv.Required(CONF_ZONE_ID): cv.int_range(min=1, max=2),
+            cv.Optional(CONF_SUPPORTS_HEAT, default=True): cv.boolean,
+            cv.Optional(CONF_SUPPORTS_COOL, default=False): cv.boolean,
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 
 async def to_code(config):
@@ -36,4 +42,3 @@ async def to_code(config):
     cg.add(var.set_supports_heat(config[CONF_SUPPORTS_HEAT]))
     cg.add(var.set_supports_cool(config[CONF_SUPPORTS_COOL]))
     cg.add(parent.register_climate_component(var))
-

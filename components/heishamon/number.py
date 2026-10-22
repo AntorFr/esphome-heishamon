@@ -19,37 +19,37 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 30.0,
         "step": 0.5,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "z2_heat_target_temp": {
-        "name": "Zone 2 Heat Target Temperature", 
+        "name": "Zone 2 Heat Target Temperature",
         "command": "SetZ2HeatRequestTemperature",
         "read_topic": "z2_heat_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
         "step": 0.5,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "z1_cool_target_temp": {
         "name": "Zone 1 Cool Target Temperature",
-        "command": "SetZ1CoolRequestTemperature", 
+        "command": "SetZ1CoolRequestTemperature",
         "read_topic": "z1_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
         "max_value": 30.0,
         "step": 0.5,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "z2_cool_target_temp": {
         "name": "Zone 2 Cool Target Temperature",
         "command": "SetZ2CoolRequestTemperature",
         "read_topic": "z2_cool_request_temp",  # Topic to read current value
         "min_value": 15.0,
-        "max_value": 30.0, 
+        "max_value": 30.0,
         "step": 0.5,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "dhw_target_temp": {
         "name": "DHW Target Temperature",
@@ -59,17 +59,12 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 65.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
-    
     # Temperature offsets
-    
     # Flow controls
-    
     # Pump controls
-    
-    # Timing controls  
-    
+    # Timing controls
     # Advanced controls
     "heating_curve_target_high": {
         "name": "Heating Curve Target High",
@@ -79,19 +74,18 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 55.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "heating_curve_target_low": {
-        "name": "Heating Curve Target Low", 
+        "name": "Heating Curve Target Low",
         "command": "SetZ1HeatCurveTargetLow",
         "read_topic": "z1_heat_curve_target_low",
         "min_value": 25.0,
         "max_value": 55.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
-    
     # Delta controls (SetFloorHeatDelta, SetFloorCoolDelta, SetDHWHeatDelta, SetBufferDelta)
     "heat_delta": {
         "name": "Heat Delta",
@@ -101,7 +95,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
+        "device_class": None,
     },
     "cool_delta": {
         "name": "Cool Delta",
@@ -111,7 +105,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
+        "device_class": None,
     },
     "dhw_heat_delta": {
         "name": "DHW Heat Delta",
@@ -121,7 +115,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
+        "device_class": None,
     },
     "buffer_tank_delta": {
         "name": "Buffer Tank Delta",
@@ -131,9 +125,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
+        "device_class": None,
     },
-    
     # Pump duty
     "max_pump_duty": {
         "name": "Max Pump Duty",
@@ -143,9 +136,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 100.0,
         "step": 1.0,
         "unit": "%",
-        "device_class": None
+        "device_class": None,
     },
-    
     # Outdoor temperature thresholds
     "heating_off_outdoor_temp": {
         "name": "Heating Off Outdoor Temperature",
@@ -155,9 +147,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 35.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
-    
     # SET46 - Heater On Outdoor Temperature (-15 to 20°C)
     "heater_on_outdoor_temp": {
         "name": "Heater On Outdoor Temperature",
@@ -167,9 +158,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 20.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
-    
     # Bivalent controls
     "bivalent_start_temp": {
         "name": "Bivalent Start Temperature",
@@ -179,7 +169,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 35.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "bivalent_ap_start_temp": {
         "name": "Bivalent AP Start Temperature",
@@ -189,7 +179,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 35.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
     "bivalent_ap_stop_temp": {
         "name": "Bivalent AP Stop Temperature",
@@ -199,9 +189,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 35.0,
         "step": 1.0,
         "unit": UNIT_CELSIUS,
-        "device_class": "temperature"
+        "device_class": "temperature",
     },
-    
     # J-Series heater controls
     "heater_delay_time": {
         "name": "Heater Delay Time",
@@ -211,7 +200,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 60.0,
         "step": 1.0,
         "unit": "min",
-        "device_class": None
+        "device_class": None,
     },
     "heater_start_delta": {
         "name": "Heater Start Delta",
@@ -221,7 +210,7 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
+        "device_class": None,
     },
     "heater_stop_delta": {
         "name": "Heater Stop Delta",
@@ -231,8 +220,8 @@ HEISHA_NUMBER_CONFIGS = {
         "max_value": 15.0,
         "step": 1.0,
         "unit": "K",
-        "device_class": None
-    }
+        "device_class": None,
+    },
 }
 
 CONFIG_SCHEMA = cv.Schema(
@@ -241,7 +230,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID("heishamon_id"): cv.use_id(HeishamonComponent),
         cv.Required("type"): cv.one_of(*HEISHA_NUMBER_CONFIGS.keys(), lower=True),
         cv.Optional("min_value"): cv.float_,
-        cv.Optional("max_value"): cv.float_, 
+        cv.Optional("max_value"): cv.float_,
         cv.Optional("step"): cv.positive_float,
     }
 ).extend(number.number_schema(HeishamonNumber))
@@ -259,38 +248,38 @@ def _build_number_schema(number_config):
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
-    
+
     # Get number configuration for this type
     number_config = HEISHA_NUMBER_CONFIGS[config["type"]]
-    
+
     await number.register_number(
-        var, 
+        var,
         config,
         min_value=number_config["min_value"],
-        max_value=number_config["max_value"], 
-        step=number_config["step"]
+        max_value=number_config["max_value"],
+        step=number_config["step"],
     )
-    
+
     # Register as Component for setup() to work
     await cg.register_component(var, config)
 
     parent = await cg.get_variable(config["heishamon_id"])
     cg.add(var.set_parent(parent))
     cg.add(var.set_number_type(config["type"]))
-    
+
     # Configure number based on type
     number_config = HEISHA_NUMBER_CONFIGS[config["type"]]
     cg.add(var.set_command(number_config["command"]))
-    
+
     # Set read topic if available for passive value display
     if "read_topic" in number_config:
         cg.add(var.set_read_topic(number_config["read_topic"]))
-    
+
     # Use provided values or defaults from config
     min_val = config.get("min_value", number_config["min_value"])
     max_val = config.get("max_value", number_config["max_value"])
     step_val = config.get("step", number_config["step"])
-    
+
     cg.add(var.set_min_value(min_val))
     cg.add(var.set_max_value(max_val))
     cg.add(var.set_step(step_val))

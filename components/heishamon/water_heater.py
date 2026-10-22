@@ -3,9 +3,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import water_heater
-from esphome.const import (
-    CONF_ID,
-)
 from . import HeishamonComponent, CONF_HEISHAMON_ID, heishamon_ns
 
 DEPENDENCIES = ["heishamon", "water_heater"]
@@ -16,9 +13,15 @@ HeishamonWaterHeater = heishamon_ns.class_(
 )
 
 # Configuration schema for DHW Water Heater
-CONFIG_SCHEMA = water_heater.water_heater_schema(HeishamonWaterHeater).extend({
-    cv.GenerateID(CONF_HEISHAMON_ID): cv.use_id(HeishamonComponent),
-}).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = (
+    water_heater.water_heater_schema(HeishamonWaterHeater)
+    .extend(
+        {
+            cv.GenerateID(CONF_HEISHAMON_ID): cv.use_id(HeishamonComponent),
+        }
+    )
+    .extend(cv.COMPONENT_SCHEMA)
+)
 
 
 async def to_code(config):
@@ -27,4 +30,3 @@ async def to_code(config):
     parent = await cg.get_variable(config[CONF_HEISHAMON_ID])
     cg.add(var.set_parent(parent))
     cg.add(parent.register_water_heater(var))
-
