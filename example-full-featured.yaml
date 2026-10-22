@@ -39,7 +39,7 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    encryption: {}  # reuses the API encryption key
 
 wifi:
   ssid: !secret wifi_ssid
@@ -717,7 +717,7 @@ select:
   - platform: heishamon
     heishamon_id: heisha_main
     type: "dhw_sensor_selection"
-    name: "DHW Sensor Selection (TOP143/SET43)"
+    name: "DHW Sensor Selection (TOP143, SET43)"
     entity_category: config
 
   - platform: heishamon
@@ -739,113 +739,113 @@ number:
   - platform: heishamon
     heishamon_id: heisha_main
     type: "dhw_target_temp"
-    name: "DHW Target Temperature (SET11/TOP9)"
+    name: "DHW Target Temperature (SET11, TOP9)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "z1_heat_target_temp"
-    name: "Zone 1 Heat Target (SET5/TOP27)"
+    name: "Zone 1 Heat Target (SET5, TOP27)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "z2_heat_target_temp"
-    name: "Zone 2 Heat Target (SET6/TOP34)"
+    name: "Zone 2 Heat Target (SET6, TOP34)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "z1_cool_target_temp"
-    name: "Zone 1 Cool Target (SET7/TOP28)"
+    name: "Zone 1 Cool Target (SET7, TOP28)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "z2_cool_target_temp"
-    name: "Zone 2 Cool Target (SET8/TOP35)"
+    name: "Zone 2 Cool Target (SET8, TOP35)"
     entity_category: config
 
   # ============== DELTA CONTROLS ==============
   - platform: heishamon
     heishamon_id: heisha_main
     type: "dhw_heat_delta"
-    name: "DHW Heat Delta (SET18/TOP22)"
+    name: "DHW Heat Delta (SET18, TOP22)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heat_delta"
-    name: "Floor Heat Delta (SET19/TOP23)"
+    name: "Floor Heat Delta (SET19, TOP23)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "cool_delta"
-    name: "Floor Cool Delta (SET20/TOP24)"
+    name: "Floor Cool Delta (SET20, TOP24)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "buffer_tank_delta"
-    name: "Buffer Tank Delta (SET34/TOP113)"
+    name: "Buffer Tank Delta (SET34, TOP113)"
     entity_category: config
 
   # ============== PUMP & OUTDOOR CONTROLS ==============
   - platform: heishamon
     heishamon_id: heisha_main
     type: "max_pump_duty"
-    name: "Max Pump Duty (SET32/TOP95)"
+    name: "Max Pump Duty (SET32, TOP95)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heating_off_outdoor_temp"
-    name: "Heating Off Outdoor Temp (SET24/TOP77)"
+    name: "Heating Off Outdoor Temp (SET24, TOP77)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heater_on_outdoor_temp"
-    name: "Heater On Outdoor Temp (SET46/TOP78)"
+    name: "Heater On Outdoor Temp (SET46, TOP78)"
     entity_category: config
 
   # ============== BIVALENT CONTROLS ==============
   - platform: heishamon
     heishamon_id: heisha_main
     type: "bivalent_start_temp"
-    name: "Bivalent Start Temp (SET35/TOP131)"
+    name: "Bivalent Start Temp (SET35, TOP131)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "bivalent_ap_start_temp"
-    name: "Bivalent Advanced Start Temp (SET36/TOP134)"
+    name: "Bivalent Advanced Start Temp (SET36, TOP134)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "bivalent_ap_stop_temp"
-    name: "Bivalent Advanced Stop Temp (SET37/TOP135)"
+    name: "Bivalent Advanced Stop Temp (SET37, TOP135)"
     entity_category: config
 
   # ============== J-SERIES HEATER CONTROLS ==============
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heater_delay_time"
-    name: "Heater Delay Time (SET29/TOP96)"
+    name: "Heater Delay Time (SET29, TOP96)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heater_start_delta"
-    name: "Heater Start Delta (SET30/TOP97)"
+    name: "Heater Start Delta (SET30, TOP97)"
     entity_category: config
 
   - platform: heishamon
     heishamon_id: heisha_main
     type: "heater_stop_delta"
-    name: "Heater Stop Delta (SET31/TOP98)"
+    name: "Heater Stop Delta (SET31, TOP98)"
     entity_category: config
 
 # =============================================================================
@@ -855,12 +855,12 @@ switch:
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "force_dhw"
-    name: "Force DHW (SET4/TOP2)"
+    name: "Force DHW (SET4, TOP2)"
 
   - platform: heishamon
     heishamon_id: heisha_main
     topic: "quiet_mode"
-    name: "Quiet Mode Switch (SET3/TOP18)"
+    name: "Quiet Mode Switch (SET3, TOP18)"
 
 # =============================================================================
 # CLIMATE - Zone temperature control

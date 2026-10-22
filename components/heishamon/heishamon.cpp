@@ -1,6 +1,7 @@
 #include "heishamon.h"
 #include "heishamon_topics.h"
 #include "esphome/core/log.h"
+#include <cinttypes>
 
 #ifdef USE_CLIMATE
 #include "climate.h"
@@ -20,8 +21,6 @@ HeishamonComponent::HeishamonComponent() {
 }
 
 void HeishamonComponent::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up Heishamon...");
-  
   ESP_LOGCONFIG(TAG, "Callback manager has %d sensor callbacks, %d binary sensor callbacks, %d switch callbacks, %d select callbacks", 
                this->callback_manager_->get_sensor_callback_count(),
                this->callback_manager_->get_binary_sensor_callback_count(),
@@ -84,7 +83,7 @@ void HeishamonComponent::loop() {
 
 void HeishamonComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Heishamon:");
-  ESP_LOGCONFIG(TAG, "  Update interval: %u ms", this->update_interval_);
+  ESP_LOGCONFIG(TAG, "  Update interval: %" PRIu32 " ms", this->update_interval_);
   ESP_LOGCONFIG(TAG, "  Listen only: %s", YESNO(this->listen_only_));
   ESP_LOGCONFIG(TAG, "  Optional PCB: %s", YESNO(this->optional_pcb_));
   if (this->tx_enable_pin_ != nullptr) {

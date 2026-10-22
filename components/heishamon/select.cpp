@@ -98,8 +98,6 @@ static std::string value_to_option(const std::string &select_type, uint8_t value
 }
 
 void HeishamonSelect::setup() {
-  ESP_LOGCONFIG(TAG, "Setting up Heishamon Select '%s'...", this->select_type_.c_str());
-  
   // Register callback for topic-based updates (works in both modes)
   if (!this->topic_.empty() && this->parent_ != nullptr) {
     ESP_LOGCONFIG(TAG, "Registering callback for topic: %s", this->topic_.c_str());

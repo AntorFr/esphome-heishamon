@@ -4,7 +4,7 @@ Native ESPHome component for Panasonic Aquarea heat pumps, based on the original
 
 **Protocol compatibility: up to date with HeishaMon v4.1.6** (v4.1.4 → v4.1.6 upstream releases contain no protocol changes — the command/topic encoding in `decode.h` and `commands.h` is unchanged. Their fixes only touch log message formatting, the WiFi captive portal, and the internal rules engine, none of which are part of this ESPHome port — no porting required).
 
-**Minimum required ESPHome version: 2026.3.0**
+**Minimum required ESPHome version: 2026.3.0** (tested with 2026.10.0)
 
 ## Features
 
