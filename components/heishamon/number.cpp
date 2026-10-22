@@ -16,7 +16,7 @@ void HeishamonNumber::setup() {
     this->parent_->register_sensor_callback(this->read_topic_, [this](float value) {
       // Only update the displayed value, don't trigger control
       ESP_LOGD(TAG, "Received value %.1f for number %s", value, this->get_name().c_str());
-      this->publish_state(value);
+      this->publish_state(this->temperature_ ? plausible_temperature(value) : value);
     });
   }
 }

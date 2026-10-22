@@ -274,6 +274,11 @@ async def to_code(config):
     # Set read topic if available for passive value display
     if "read_topic" in number_config:
         cg.add(var.set_read_topic(number_config["read_topic"]))
+        if config.get("unit_of_measurement", number_config["unit"]) in (
+            UNIT_CELSIUS,
+            "K",
+        ):
+            cg.add(var.set_temperature(True))
 
     # Use provided values or defaults from config
     min_val = config.get("min_value", number_config["min_value"])

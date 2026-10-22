@@ -36,7 +36,6 @@ du composant (pilotée selon `listen_only`), `tx_enable_pin: GPIO5` dans le YAML
 
 **Prochaines étapes :**
 - [ ] Flasher et valider le climate Z1 sur la PAC (consigne → décalage, Heat/Off)
-- [ ] TOP36 « Température eau zone 1 » lit -78 °C (0x32) sur cette PAC : décodage ou capteur absent ?
 - [ ] Implémenter le forwarding proxy vers le port CZ-TAW1 (uart2 GPIO8/9, comme l'upstream) si l'ancien HeishaMon doit resservir de moniteur
 - [ ] Compléter la table de commandes depuis l'upstream (SetSmartGridMode, SetZ*RoomTemp/WaterTemp…) pour ré-offrir proprement les contrôles retirés de number.py
 - [ ] Implémenter le décodage des trames « extra » (0x21) et optional PCB (0xF1) — TODO dans `on_protocol_data_received`

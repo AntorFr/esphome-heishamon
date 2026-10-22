@@ -150,7 +150,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // DHW temperature (byte 141: temperature - 128)
     {
       float dhw_temp = static_cast<float>(data[141] - 128);
-      this->dhw_current_temp_ = dhw_temp;  // Store for water heater component
+      this->dhw_current_temp_ = plausible_temperature(dhw_temp);  // Store for water heater component
       if (this->callback_manager_->has_sensor_callback("dhw_temp")) {
         this->callback_manager_->notify_sensor_value("dhw_temp", dhw_temp);
       }
@@ -166,7 +166,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // Outside temperature (byte 142: temperature - 128) - TOP14
     {
       float outside_temp = static_cast<float>(data[142] - 128);
-      this->outdoor_temp_ = outside_temp;  // Store for climate component (compensation curve)
+      this->outdoor_temp_ = plausible_temperature(outside_temp);  // Store for climate component (compensation curve)
       if (this->callback_manager_->has_sensor_callback("outside_temp")) {
         this->callback_manager_->notify_sensor_value("outside_temp", outside_temp);
       }
@@ -295,7 +295,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // Zone 1 Temperature (byte 139: temperature - 128) - TOP56
     {
       float z1_temp = static_cast<float>(data[139] - 128);
-      this->zone_current_temp_[0] = z1_temp;  // Store for climate component
+      this->zone_current_temp_[0] = plausible_temperature(z1_temp);  // Store for climate component
       if (this->callback_manager_->has_sensor_callback("z1_temp")) {
         this->callback_manager_->notify_sensor_value("z1_temp", z1_temp);
       }
@@ -304,7 +304,7 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // Zone 2 Temperature (byte 140: temperature - 128) - TOP57
     {
       float z2_temp = static_cast<float>(data[140] - 128);
-      this->zone_current_temp_[1] = z2_temp;  // Store for climate component
+      this->zone_current_temp_[1] = plausible_temperature(z2_temp);  // Store for climate component
       if (this->callback_manager_->has_sensor_callback("z2_temp")) {
         this->callback_manager_->notify_sensor_value("z2_temp", z2_temp);
       }
@@ -641,10 +641,10 @@ void HeishamonComponent::decode_and_notify_sensors(const std::vector<uint8_t> &d
     // Compensation curves, stored for the climate component (TOP29-32, TOP72-75, TOP82-85, TOP86-89)
     {
       auto read_curve = [&data](CompensationCurve &curve, size_t base) {
-        curve.target_high = static_cast<float>(data[base] - 128);
-        curve.target_low = static_cast<float>(data[base + 1] - 128);
-        curve.outside_low = static_cast<float>(data[base + 2] - 128);
-        curve.outside_high = static_cast<float>(data[base + 3] - 128);
+        curve.target_high = plausible_temperature(static_cast<float>(data[base] - 128));
+        curve.target_low = plausible_temperature(static_cast<float>(data[base + 1] - 128));
+        curve.outside_low = plausible_temperature(static_cast<float>(data[base + 2] - 128));
+        curve.outside_high = plausible_temperature(static_cast<float>(data[base + 3] - 128));
       };
       read_curve(this->zone_heat_curve_[0], 75);
       read_curve(this->zone_heat_curve_[1], 79);
@@ -1540,7 +1540,8 @@ float HeishamonComponent::get_zone_request_temperature(uint8_t zone, bool cool) 
 float HeishamonComponent::get_zone_curve_temperature(uint8_t zone, bool cool) const {
   const CompensationCurve &curve = (cool ? this->zone_cool_curve_ : this->zone_heat_curve_)[zone - 1];
   float outdoor = this->outdoor_temp_;
-  if (std::isnan(outdoor) || std::isnan(curve.target_high) || curve.outside_high <= curve.outside_low) {
+  if (std::isnan(outdoor) || std::isnan(curve.target_high) || std::isnan(curve.target_low) ||
+      std::isnan(curve.outside_low) || std::isnan(curve.outside_high) || curve.outside_high <= curve.outside_low) {
     return NAN;
   }
   // Flat outside the [outside_low, outside_high] span, linear in between

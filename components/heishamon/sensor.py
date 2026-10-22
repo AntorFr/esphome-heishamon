@@ -33,6 +33,8 @@ UNIT_BAR = "bar"
 UNIT_KGF_CM2 = "kgf/cm²"
 UNIT_RPM = "r/min"
 
+TEMPERATURE_UNITS = (UNIT_CELSIUS, UNIT_KELVIN)
+
 # Complete topics configuration based on HeishaMon protocol
 # Reference: https://github.com/Egyras/HeishaMon
 HEISHA_TOPICS = {
@@ -869,10 +871,14 @@ async def to_code(config):
 
     parent = await cg.get_variable(config["heishamon_id"])
 
-    # Register callback with parent component for this topic
+    # Register callback with parent component for this topic; temperatures a
+    # model does not provide are published as unknown (see plausible_temperature)
+    value = "value"
+    if merged_config.get("unit_of_measurement") in TEMPERATURE_UNITS:
+        value = "heishamon::plausible_temperature(value)"
     cg.add(
         parent.register_sensor_callback(
             topic,
-            cg.RawExpression(f"[=](float value) {{ {var}->publish_state(value); }}"),
+            cg.RawExpression(f"[=](float value) {{ {var}->publish_state({value}); }}"),
         )
     )

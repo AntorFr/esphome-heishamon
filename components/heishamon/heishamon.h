@@ -57,6 +57,12 @@ enum class ZoneSensorMode : uint8_t {
   THERMISTOR = 3
 };
 
+// Temperatures travel as byte - 128. A model without the probe or setting sends
+// filler instead (0x00 -> -128 °C, other fillers seen too); nothing an Aquarea
+// measures or sets goes below -50 °C / K, so such a value means "not provided".
+static constexpr float MIN_PLAUSIBLE_TEMPERATURE = -50.0f;
+inline float plausible_temperature(float value) { return value < MIN_PLAUSIBLE_TEMPERATURE ? NAN : value; }
+
 // What a climate entity asks of its zone
 enum class ZoneDemand : uint8_t { OFF, HEAT, COOL };
 

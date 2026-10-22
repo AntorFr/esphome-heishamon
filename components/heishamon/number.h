@@ -17,6 +17,7 @@ class HeishamonNumber : public number::Number, public Component {
   void set_number_type(const std::string &type) { number_type_ = type; }
   void set_command(const std::string &command) { command_ = command; }
   void set_read_topic(const std::string &topic) { read_topic_ = topic; }
+  void set_temperature(bool temperature) { temperature_ = temperature; }
   
   void set_min_value(float min_value) { this->traits.set_min_value(min_value); }
   void set_max_value(float max_value) { this->traits.set_max_value(max_value); }
@@ -32,6 +33,7 @@ class HeishamonNumber : public number::Number, public Component {
   std::string number_type_;
   std::string command_;
   std::string read_topic_;  // Topic to read current value from
+  bool temperature_{false};  // Read-back is a temperature: filter values the model does not provide
 };
 
 }  // namespace heishamon

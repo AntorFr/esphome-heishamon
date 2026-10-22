@@ -148,10 +148,16 @@ Connect to **CN-NMODE** port for passive monitoring:
 | `heat_power_production` | Heat Power Production | TOP15 |
 | `heat_power_consumption` | Heat Power Consumption | TOP16 |
 | `operations_hours` | Operations Hours | TOP11 |
-| `z1_water_temp` | Zone 1 Water Temperature | TOP42 |
-| `z2_water_temp` | Zone 2 Water Temperature | TOP43 |
+| `z1_water_temp` | Zone 1 Water Temperature | TOP36 |
+| `z2_water_temp` | Zone 2 Water Temperature | TOP37 |
 
 See [example-full-featured.yaml](example-full-featured.yaml) for complete sensor list.
+
+**Values your model does not provide.** Temperatures are sent as `byte - 128`, and a
+heat pump without a given probe or setting sends a filler byte instead (e.g. `0x00`,
+read as -128 °C). Any °C or K reading below -50 is therefore published as *unknown*
+rather than as a bogus number. This applies to sensors and to number read-backs, and
+the climate and water heater entities ignore such values too.
 
 ### Binary Sensors (binary_sensor platform)
 
