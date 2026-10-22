@@ -18,7 +18,7 @@ class HeishaMonClimate : public climate::Climate, public Component {
 
   void setup() override;
   void dump_config() override;
-  
+
   // Climate interface
   climate::ClimateTraits traits() override;
   void control(const climate::ClimateCall &call) override;
@@ -32,24 +32,15 @@ class HeishaMonClimate : public climate::Climate, public Component {
   bool supports_heat_{true};
   bool supports_cool_{false};
 
-  // Internal state tracking
-  float current_temperature_{NAN};
-  float target_temperature_{NAN};
-  climate::ClimateMode current_mode_{climate::CLIMATE_MODE_OFF};
-  
-  // Heat pump state tracking
-  bool global_heat_enabled_{false};
-  bool global_cool_enabled_{false};
-  bool zone_heat_enabled_{false};
-  bool zone_cool_enabled_{false};
-  
-  // Helper methods
-  void update_operating_mode();
-  void update_zone_temperatures();
-  void update_zone_states();
-  void send_climate_command();
-  bool is_zone_active() const;
-  climate::ClimateMode get_current_hvac_mode() const;
+  // Whether the target applies to the cooling side (otherwise heating)
+  bool targets_cooling_() const;
+  // Whether the request temperature is a shift on the compensation curve
+  bool uses_curve_shift_() const;
+  // Curve water temperature for the current outdoor temperature, rounded (NAN if unknown)
+  float curve_base_() const;
+  // Target as shown to the user: the actual water (or room) temperature aimed at
+  float compute_target_() const;
+  void send_target_(float target);
 };
 
 }  // namespace heishamon

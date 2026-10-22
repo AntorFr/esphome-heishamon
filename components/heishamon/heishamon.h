@@ -57,6 +57,17 @@ enum class ZoneSensorMode : uint8_t {
   THERMISTOR = 3
 };
 
+// What a climate entity asks of its zone
+enum class ZoneDemand : uint8_t { OFF, HEAT, COOL };
+
+// Compensation curve: water target_high at outside_low, target_low at outside_high
+struct CompensationCurve {
+  float target_high{NAN};
+  float target_low{NAN};
+  float outside_low{NAN};
+  float outside_high{NAN};
+};
+
 class HeishamonComponent : public Component, public uart::UARTDevice {
  public:
   HeishamonComponent();
@@ -96,40 +107,21 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
   void create_command(const std::string &command, uint8_t value);
   bool send_number_command(const std::string &command, float value);
 
-  // Climate control functions
-  void set_heat_mode_enabled(bool enabled);
-  void set_cool_mode_enabled(bool enabled);
-  void set_zone1_heat_enabled(bool enabled);
-  void set_zone1_cool_enabled(bool enabled);
-  void set_zone2_heat_enabled(bool enabled);
-  void set_zone2_cool_enabled(bool enabled);
-  
-  // Temperature setters
-  void set_zone1_heat_target_temperature(float temperature);
-  void set_zone1_cool_target_temperature(float temperature);
-  void set_zone2_heat_target_temperature(float temperature);
-  void set_zone2_cool_target_temperature(float temperature);
-  
-  // Temperature getters
-  float get_zone1_current_temperature() const;
-  float get_zone2_current_temperature() const;
-  float get_zone1_heat_target_temperature() const;
-  float get_zone1_cool_target_temperature() const;
-  float get_zone2_heat_target_temperature() const;
-  float get_zone2_cool_target_temperature() const;
-  
-  // State getters
-  bool get_heat_mode_enabled() const;
-  bool get_cool_mode_enabled() const;
-  bool get_zone1_heat_enabled() const;
-  bool get_zone1_cool_enabled() const;
-  bool get_zone2_heat_enabled() const;
-  bool get_zone2_cool_enabled() const;
-  
-  // Zone sensor mode getters
-  ZoneSensorMode get_zone1_sensor_mode() const { return this->zone1_sensor_mode_; }
-  ZoneSensorMode get_zone2_sensor_mode() const { return this->zone2_sensor_mode_; }
-  
+  // Climate support (zone = 1 or 2)
+  void request_zone_demand(uint8_t zone, ZoneDemand demand);
+  void set_zone_request_temperature(uint8_t zone, bool cool, int value);
+  float get_zone_current_temperature(uint8_t zone) const;
+  // TOP27/28/34/35: a shift (-5..+5) in compensation curve mode, an absolute temperature otherwise
+  float get_zone_request_temperature(uint8_t zone, bool cool) const;
+  // Water temperature the compensation curve yields for the current outdoor temperature (NAN if unknown)
+  float get_zone_curve_temperature(uint8_t zone, bool cool) const;
+  bool get_zone_demand_active(uint8_t zone, ZoneDemand demand) const;
+  bool get_heating_uses_curve() const { return this->heating_uses_curve_; }
+  bool get_cooling_uses_curve() const { return this->cooling_uses_curve_; }
+  ZoneSensorMode get_zone_sensor_mode(uint8_t zone) const {
+    return zone == 2 ? this->zone2_sensor_mode_ : this->zone1_sensor_mode_;
+  }
+
   // DHW (Domestic Hot Water) getters
   float get_dhw_current_temperature() const { return this->dhw_current_temp_; }
   float get_dhw_target_temperature() const { return this->dhw_target_temp_; }
@@ -184,21 +176,18 @@ class HeishamonComponent : public Component, public uart::UARTDevice {
 #endif
   
   // Climate state tracking
-  bool heat_mode_enabled_{false};
-  bool cool_mode_enabled_{false};
-  bool zone1_heat_enabled_{false};
-  bool zone1_cool_enabled_{false};
-  bool zone2_heat_enabled_{false};
-  bool zone2_cool_enabled_{false};
-  
-  // Current temperatures
-  float zone1_current_temp_{NAN};
-  float zone2_current_temp_{NAN};
-  float zone1_heat_target_temp_{20.0f};
-  float zone1_cool_target_temp_{20.0f};
-  float zone2_heat_target_temp_{20.0f};
-  float zone2_cool_target_temp_{20.0f};
-  
+  bool heatpump_on_{false};
+  uint8_t operation_mode_{0};  // byte 6, low 6 bits (TOP4 raw)
+  uint8_t zones_state_{0};     // TOP94: 0=Zone 1, 1=Zone 2, 2=both
+  bool heating_uses_curve_{false};  // TOP76
+  bool cooling_uses_curve_{false};  // TOP81
+  float outdoor_temp_{NAN};
+  float zone_current_temp_[2]{NAN, NAN};
+  float zone_heat_request_temp_[2]{NAN, NAN};
+  float zone_cool_request_temp_[2]{NAN, NAN};
+  CompensationCurve zone_heat_curve_[2];
+  CompensationCurve zone_cool_curve_[2];
+
   // DHW state tracking
   float dhw_current_temp_{NAN};
   float dhw_target_temp_{45.0f};

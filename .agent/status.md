@@ -1,13 +1,17 @@
 # Status — esphome-heishamon
 
-> MàJ : 2026-08-10
+> MàJ : 2026-10-22
 
 **État :** Composant compatible protocole HeishaMon v4.1.6. **Mode actif EN SERVICE,
 commandes SET validées sur la PAC réelle** (2026-08-11) : SetQuietMode ✅,
 SetForceDHW ✅ (TOP2 confirmé), SetDHWTemp ✅ (60→61→60 confirmé par TOP9).
 PAC : WH-ADC1216H6E5 (All-In-One T-CAP 12 kW, TOP92 `E2 CF 0B 75 09 12 D0 0C 05 11`).
-SetZ1HeatRequestTemperature ignoré en mode « DHW only » estival (zones off) — attendu,
-à revalider en saison de chauffe. Fixes de la campagne : troncature buffer commandes
+**Climate refait (2026-10-22)** : en loi d'eau, TOP27 est un décalage ±5 (d'où le
+« Chauffage 0 °C ») → le thermostat affiche courbe(T ext) + décalage et convertit la
+consigne en décalage ; Heat/Off pilotent enfin SetOperationMode/SetZones/SetHeatpump
+(c'étaient des stubs). PAC réelle : loi d'eau, sonde zone 1 = thermostat externe,
+courbe 60 °C@-5 / 40 °C@15. TOP42 suit la cible ECS pendant la production d'ECS
+(60 °C lu) → inutilisable comme consigne de zone. Fixes de la campagne : troncature buffer commandes
 (20 → 110 o), cadence optional PCB, switches pilotables, `tx_enable_pin` (GPIO5),
 **mapping des numbers** (7 noms de commandes inventés → vrais noms de la table ; 9
 contrôles sans équivalent protocole supprimés — ils échouaient en silence).
@@ -31,7 +35,8 @@ LOW = listen-only) et notre firmware ne le pilotait pas. Fix : option `tx_enable
 du composant (pilotée selon `listen_only`), `tx_enable_pin: GPIO5` dans le YAML device.
 
 **Prochaines étapes :**
-- [ ] Revalider SetZ1HeatRequestTemperature (et le climate Z1) en saison de chauffe
+- [ ] Flasher et valider le climate Z1 sur la PAC (consigne → décalage, Heat/Off)
+- [ ] TOP36 « Température eau zone 1 » lit -78 °C (0x32) sur cette PAC : décodage ou capteur absent ?
 - [ ] Implémenter le forwarding proxy vers le port CZ-TAW1 (uart2 GPIO8/9, comme l'upstream) si l'ancien HeishaMon doit resservir de moniteur
 - [ ] Compléter la table de commandes depuis l'upstream (SetSmartGridMode, SetZ*RoomTemp/WaterTemp…) pour ré-offrir proprement les contrôles retirés de number.py
 - [ ] Implémenter le décodage des trames « extra » (0x21) et optional PCB (0xF1) — TODO dans `on_protocol_data_received`

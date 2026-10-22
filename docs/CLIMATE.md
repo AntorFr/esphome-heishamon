@@ -80,27 +80,36 @@ climate:
 
 ## Behavior
 
-### Temperature Ranges
+### Target Temperature
 
-The temperature ranges depend on the operation mode:
+What the target means depends on how the zone is set up on the heat pump:
 
-- **Heating Mode**: 20°C to 55°C (water temperature control)
-- **Cooling Mode**: 5°C to 25°C (water temperature control)
-- **Step**: 1°C
+| Zone sensor (TOP111/112) | Heating/cooling mode (TOP76/81) | Target shown and set |
+|---|---|---|
+| Water temperature, External thermostat | Compensation curve | Water temperature = curve value + shift |
+| Water temperature, External thermostat | Direct | Water temperature (absolute) |
+| Internal thermostat, Thermistor | any | Room temperature (absolute) |
+
+On the compensation curve the heat pump only accepts a **shift of -5 to +5 K**
+(the raw TOP27 value). The thermostat therefore computes the curve's water
+temperature for the current outdoor temperature (TOP14 and the curve settings
+TOP29-32), displays `curve + shift`, and turns a new target into the matching
+shift. A target beyond ±5 K of the curve is clamped, with a warning in the log.
+The displayed value moves with the outdoor temperature, as the curve does.
+
+Visual ranges: 20-65 °C (water, heating), 5-25 °C (water, cooling),
+10-30 °C (room), step 1 °C.
 
 ### Operation Modes
 
-- **Off**: Zone is disabled
-- **Heat**: Zone heating enabled (requires `supports_heat: true`)
-- **Cool**: Zone cooling enabled (requires `supports_cool: true`)
+- **Heat**: switches the operation mode to *Heat* (or *Heat+DHW* when hot water
+  was enabled), adds the zone to the active zones and powers the heat pump on if needed
+- **Cool**: same with *Cool* / *Cool+DHW* (requires `supports_cool: true`)
+- **Off**: if the other zone is active, only this zone is removed; otherwise the
+  heat pump goes to *DHW only* when hot water was enabled, or is powered off
 
-### Zone Coordination
-
-The climate component automatically coordinates with the heat pump's global operating modes:
-
-1. **Zone Control**: When you turn on a zone, it enables that specific zone
-2. **Global Mode**: When you enable heating/cooling, it enables the global heat pump mode
-3. **Auto Disable**: When all zones are turned off, the global mode may be disabled
+The displayed mode always reflects the heat pump state (power, operation mode,
+active zones); *Auto* modes show as Heat or Cool depending on the active side.
 
 ### Integration with Home Assistant
 
@@ -192,15 +201,13 @@ automation:
 
 ### Mode Changes Not Working
 
-- Confirm that the heat pump supports the requested operation mode
-- Check that global heat pump modes are enabled
-- Verify that zone control is available on your heat pump model
+- Mode commands require active mode (`listen_only: false`)
+- Check the log for `Zone N demand` lines and the following heat pump frame
 
-### Temperature Range Issues
+### Target Is Empty
 
-- The component uses water temperature control, not room temperature
-- Ranges are based on typical Panasonic Aquarea specifications
-- Some heat pump models may have different ranges
+- On the compensation curve the target needs the curve settings and the outdoor
+  temperature; it appears with the first full heat pump frame
 
 ## Related Components
 
